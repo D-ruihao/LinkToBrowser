@@ -1,33 +1,35 @@
 <div align="center">
-  <img src="src/Assets/LinkToBrowser.svg" width="96" height="96" alt="LinkToBrowser Logo" />
+  <img src="src/Assets/LinkToBrowser.svg" width="88" height="88" alt="LinkToBrowser Logo" />
   <h1>LinkToBrowser</h1>
   <p>
     <strong>A lightweight Windows 11 URL router, browser picker, and clipboard link handler</strong><br/>
-    <sub>Route external HTTP / HTTPS links by rule to a specific browser, last focused window, isolated browser, or clipboard</sub>
+    <sub>
+      Can't jump clicked links straight to the right browser across multiple windows? Antidetect browser windows can't be set as Windows default?<br/>
+      LinkToBrowser routes every external HTTP/HTTPS click by rule, picker popup, or directly into active isolated windows.
+    </sub>
   </p>
   <p>
     <a href="README.md">简体中文</a> | <strong>English</strong>
     &nbsp;·&nbsp;
     <a href="https://github.com/D-ruihao/LinkToBrowser/releases">Download Releases</a>
   </p>
+  <img src="docs/screenshots/demo-en.gif" width="860" alt="LinkToBrowser Workflow Demo" />
 </div>
 
 ---
 
 ## Features
 
-Windows 11 only lets you bind one fixed default browser for `HTTP`/`HTTPS`, and cannot send external link clicks straight into active isolated / antidetect browser windows. Once set as your per-user `HTTP` / `HTTPS` handler, `LinkToBrowser` routes every clicked link flexibly:
-
-- **URL & Source-App Routing Rules**: Match by **Domain** (dot-boundary safe, supports `*.`, ports, and IPv6), **URL Prefix**, **Wildcard** (`*` / `?`), and optional **Source Apps** (e.g. `WeChat.exe`, `QQ.exe`, `Code.exe`) top-to-bottom. Includes rule search, duplication, a live URL + source-app match tester, `Alt`/`Shift` modifier override, and a one-click **Remember domain** checkbox in the picker.
+- **URL & Source-App Routing Rules**: Match by **Domain** (dot-boundary safe, supports `*.`, ports, and IPv6), **URL Prefix**, **Wildcard** (`*` / `?`), and optional **Source Apps** (e.g. `WeChat.exe`, `QQ.exe`, `Code.exe`) top-to-bottom. Includes rule search, duplication, live URL + source-app testing, `Alt`/`Shift` modifier override, and a one-click **Remember domain** checkbox in the picker.
 - **Five Global Modes** *(when no rule matches)*:
   1. **Last Focused Browser**: Opens links in the most recently focused browser window (including minimized windows), with configurable fallback.
-  2. **Browser Picker Popup**: Appears near the cursor (mixed-DPI multi-monitor aware) with `1–9` hotkeys, live filtering, `↑/↓` + `Enter` launch, `Ctrl+C` copy, and one-click domain remembering.
+  2. **Browser Picker Popup**: Appears near the cursor (mixed-DPI multi-monitor aware) with `1–9` hotkeys, live filtering, `Ctrl+C` copy, and one-click domain remembering.
   3. **Specific Browser**: Silently opens links in a chosen browser, Chromium profile, active isolated window, or custom executable.
   4. **Copy to Clipboard**: Captures and copies links with an optional auto-closing confirmation popup.
   5. **Windows Native**: Silently forwards links to your previously recorded default browser.
-- **Link Preprocessing & Isolated Browser Support (CDP)**: Optional redirect-wrapper unwrapping (Zhihu, Juejin, QQ, Outlook SafeLinks, etc.; off by default and skips OAuth login links) and custom tracking parameter stripping; opens new tabs directly inside active isolated Chromium windows exposing a local `DevToolsActivePort`. *Compatibility note: verified on BitBrowser; other Chromium isolated browsers exposing a standard `DevToolsActivePort` depend on their own configuration, and unavailable targets safely fall back to clipboard copy.*
-- **Config Backup, Route Logs & Automation CLI**: Export/import full configs or rules + custom browsers as JSON (auto-backs up `config.bak.json` before import, supports merge or replace); `links.log` records source app, matched rule, and target browser; headless CLI with UTF-8 `--json` output for scripting and automation.
-- **Portable & Per-User (`HKCU`)**: Runs on Windows 11's inbox `.NET Framework 4.8` with no admin rights required; stores `config.json` and `logs\` next to the executable, with instant English/Chinese switching and Light/Dark Mica themes.
+- **Antidetect / Isolated Browser Window Support (CDP)**: Discovers running isolated Chromium windows exposing a local `DevToolsActivePort` and opens new tabs directly inside them. *Verified on BitBrowser; unavailable targets safely fall back to clipboard copy.*
+- **Link Preprocessing, Backup & CLI**: Optional redirect-wrapper unwrapping (Zhihu, Juejin, QQ, Outlook SafeLinks, etc.; off by default and skips OAuth links) and custom tracking stripping; JSON import/export (`config.bak.json` backup), `links.log` route logging, and headless UTF-8 `--json` CLI.
+- **Portable & Per-User (`HKCU`)**: Runs on Windows 11's inbox `.NET Framework 4.8` with no admin rights required; stores `config.json` and `logs\` next to the executable, with English/Chinese switching and Light/Dark Mica themes.
 
 ---
 
@@ -86,6 +88,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
 Outputs `dist\LinkToBrowser\` and `dist\LinkToBrowser-portable.zip`.
+
+## Friendly Links
+
+- [LINUX DO](https://linux.do/) — Chinese tech community covering software development, AI, open-source projects, and practical tools.
 
 ## License
 
