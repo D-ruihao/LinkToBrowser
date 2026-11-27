@@ -26,15 +26,38 @@ namespace LinkToBrowser
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "LinkToBrowser");
 
-            var logService = new LogService(Path.Combine(exeDir, "logs"), Path.Combine(localDir, "logs"));
-            logService.LogArgs(args);
-
             var inv = CliParser.Parse(args);
+            if (!string.IsNullOrWhiteSpace(inv.ConfigDir))
+            {
+                try
+                {
+                    exeDir = Path.GetFullPath(inv.ConfigDir);
+                    localDir = exeDir;
+                }
+                catch (Exception ex)
+                {
+                    if (inv.Kind == CliKind.ScriptCommand)
+                    {
+                        return CliCommandHandler.WriteError(inv, $"Invalid --config-dir path '{inv.ConfigDir}': {ex.Message}", exitCode: 2);
+                    }
+
+                    return 2;
+                }
+            }
+
+            var logService = new LogService(Path.Combine(exeDir, "logs"), Path.Combine(localDir, "logs"));
+            if (inv.Kind != CliKind.ScriptCommand)
+            {
+                logService.LogArgs(args);
+            }
+
             var configService = new ConfigService(exeDir, localDir);
             var registration = new SystemRegistration(selfExe);
 
             switch (inv.Kind)
             {
+                case CliKind.ScriptCommand:
+                    return CliCommandHandler.Execute(inv, configService, logService, registration, selfExe);
                 case CliKind.Register:
                     try
                     {

@@ -54,6 +54,39 @@ namespace LinkToBrowser.Views
             public Visibility CustomActionVisibility => Entry.Kind == BrowserKind.Custom ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        private sealed class RuleRowVm
+        {
+            public RoutingRule Rule { get; set; }
+            public bool IsEnabled => Rule.Enabled;
+            public string Name => string.IsNullOrWhiteSpace(Rule.Name) ? Rule.Pattern : Rule.Name;
+            public string MatchKindLabel => Rule.MatchKind switch
+            {
+                RuleMatchKind.UrlPrefix => L.Get("S_RuleMatchPrefix"),
+                RuleMatchKind.Wildcard => L.Get("S_RuleMatchWildcard"),
+                _ => L.Get("S_RuleMatchDomain")
+            };
+            public string ActionLabel => FormatRuleAction(Rule);
+            public string Subtitle => $"{Rule.Pattern}  →  {ActionLabel}";
+            public ImageSource Icon => Rule.Action == RuleActionKind.OpenTarget && Rule.TargetBrowser != null
+                ? UiHelpers.GetExeIcon(Rule.TargetBrowser.ExecutablePath)
+                : null;
+            public Visibility FallbackIconVisibility => Icon == null ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static string FormatRuleAction(RoutingRule rule)
+        {
+            if (rule == null) return string.Empty;
+            return rule.Action switch
+            {
+                RuleActionKind.OpenTarget => rule.TargetBrowser?.Name ?? L.Get("S_RuleActOpenTarget"),
+                RuleActionKind.ClipboardOnly => L.Get("S_RuleActClipboard"),
+                RuleActionKind.PickerPopup => L.Get("S_RuleActPicker"),
+                RuleActionKind.RecentBrowser => L.Get("S_RuleActRecent"),
+                RuleActionKind.NativePassthrough => L.Get("S_RuleActNative"),
+                _ => string.Empty
+            };
+        }
+
         private readonly ConfigService _configService;
         private readonly LogService _logService;
         private readonly SystemRegistration _registration;
@@ -77,7 +110,15 @@ namespace LinkToBrowser.Views
             _selfExe = selfExe;
 
             _cfg = _configService.Load();
-            if (_registration.TrySnapshot(_cfg))
+            var cfgDirty = _registration.TrySnapshot(_cfg);
+            if (!_cfg.SampleRulesSeeded && (_cfg.Rules == null || _cfg.Rules.Count == 0))
+            {
+                _cfg.Rules = RuleMatcher.CreateDefaultSamples(L.ResolveIsEnglish(_cfg.Language));
+                _cfg.SampleRulesSeeded = true;
+                cfgDirty = true;
+            }
+
+            if (cfgDirty)
             {
                 _configService.Save(_cfg);
             }
@@ -166,6 +207,7 @@ namespace LinkToBrowser.Views
                 _allBrowsers = BrowserCatalog.GetAllWithRunning(_cfg, _selfExe, includeHidden: true);
                 RefreshRegistrationBanner();
                 BindGeneralControls();
+                BindRuleRows();
                 BindBrowserRows();
                 RefreshDiagnostics();
             }
@@ -289,6 +331,7 @@ namespace LinkToBrowser.Views
             ChromiumProfilesToggle.IsChecked = _cfg.ShowChromiumProfiles;
             StripTrackingToggle.IsChecked = _cfg.StripTrackingParams;
             EnableCdpToggle.IsChecked = _cfg.EnableCdpForIsolatedBrowsers;
+            EnableRulesToggle.IsChecked = _cfg.EnableRoutingRules;
 
             SelectComboItem(AutoCloseCombo, _cfg.ClipboardAutoCloseSeconds, 0);
             SelectComboItem(ModifierCombo, _cfg.Modifier, ModifierKey.None);
@@ -365,6 +408,47 @@ namespace LinkToBrowser.Views
             }).ToList();
         }
 
+        private void BindRuleRows()
+        {
+            var rules = _cfg.Rules ?? new List<RoutingRule>();
+            RulesListControl.ItemsSource = rules.Select(r => new RuleRowVm { Rule = r }).ToList();
+            UpdateRuleTestPreview();
+        }
+
+        private void UpdateRuleTestPreview()
+        {
+            var raw = (RuleTestBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(raw))
+            {
+                RuleTestResultText.Text = string.Empty;
+                RuleTestResultText.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+                return;
+            }
+
+            if (!UrlService.TryNormalize(raw, out var normalized))
+            {
+                RuleTestResultText.Text = L.Get("S_RulesTestNone");
+                RuleTestResultText.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+                return;
+            }
+
+            var effectiveUrl = _cfg.StripTrackingParams ? UrlService.StripTracking(normalized) : normalized;
+            if (_cfg.EnableRoutingRules)
+            {
+                var hit = RuleMatcher.Match(effectiveUrl, _cfg.Rules);
+                if (hit != null)
+                {
+                    var name = string.IsNullOrWhiteSpace(hit.Name) ? hit.Pattern : hit.Name;
+                    RuleTestResultText.Text = L.Format("S_RulesTestHit", name, FormatRuleAction(hit));
+                    RuleTestResultText.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "SystemFillColorSuccessBrush");
+                    return;
+                }
+            }
+
+            RuleTestResultText.Text = L.Get("S_RulesTestNone");
+            RuleTestResultText.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "TextFillColorSecondaryBrush");
+        }
+
         private void RefreshDiagnostics()
         {
             var httpProg = _registration.GetUserChoice("http");
@@ -391,15 +475,18 @@ namespace LinkToBrowser.Views
         {
             _currentPage = page;
             GeneralPage.Visibility = page == "General" ? Visibility.Visible : Visibility.Collapsed;
+            RulesPage.Visibility = page == "Rules" ? Visibility.Visible : Visibility.Collapsed;
             BrowsersPage.Visibility = page == "Browsers" ? Visibility.Visible : Visibility.Collapsed;
             AboutPage.Visibility = page == "About" ? Visibility.Visible : Visibility.Collapsed;
 
             NavGeneralBtn.Appearance = page == "General" ? ControlAppearance.Secondary : ControlAppearance.Transparent;
+            NavRulesBtn.Appearance = page == "Rules" ? ControlAppearance.Secondary : ControlAppearance.Transparent;
             NavBrowsersBtn.Appearance = page == "Browsers" ? ControlAppearance.Secondary : ControlAppearance.Transparent;
             NavAboutBtn.Appearance = page == "About" ? ControlAppearance.Secondary : ControlAppearance.Transparent;
 
             PageTitleText.Text = page switch
             {
+                "Rules" => L.Get("S_NavRules"),
                 "Browsers" => L.Get("S_NavBrowsers"),
                 "About" => L.Get("S_NavAbout"),
                 _ => L.Get("S_NavGeneral")
@@ -407,6 +494,11 @@ namespace LinkToBrowser.Views
         }
 
         private void NavGeneral_Click(object sender, RoutedEventArgs e) => SwitchPage("General");
+        private void NavRules_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateRuleTestPreview();
+            SwitchPage("Rules");
+        }
         private void NavBrowsers_Click(object sender, RoutedEventArgs e) => SwitchPage("Browsers");
         private void NavAbout_Click(object sender, RoutedEventArgs e)
         {
@@ -723,6 +815,25 @@ namespace LinkToBrowser.Views
                     };
                 }
 
+                if (_cfg.Rules != null)
+                {
+                    foreach (var rule in _cfg.Rules)
+                    {
+                        if (rule?.TargetBrowser != null &&
+                            string.Equals(rule.TargetBrowser.Id, target.Id, StringComparison.OrdinalIgnoreCase))
+                        {
+                            rule.TargetBrowser = new BrowserEntry
+                            {
+                                Id = target.Id,
+                                Name = target.Name,
+                                ExecutablePath = target.ExecutablePath,
+                                ArgumentsTemplate = target.ArgumentsTemplate,
+                                Kind = BrowserKind.Custom
+                            };
+                        }
+                    }
+                }
+
                 SaveAndFlash();
                 RefreshAllState();
             }
@@ -787,7 +898,7 @@ namespace LinkToBrowser.Views
 
         private void OpenReleases_Click(object sender, RoutedEventArgs e) => OpenExternalUrl("https://github.com/D-ruihao/LinkToBrowser/releases");
 
-        private static void OpenExternalUrl(string url)
+        private void OpenExternalUrl(string url)
         {
             try
             {
@@ -795,6 +906,200 @@ namespace LinkToBrowser.Views
             }
             catch
             {
+            }
+        }
+
+        private void EnableRulesToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingUi) return;
+            _cfg.EnableRoutingRules = EnableRulesToggle.IsChecked == true;
+            UpdateRuleTestPreview();
+            SaveAndFlash();
+        }
+
+        private void RuleTestBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateRuleTestPreview();
+
+        private void AddRule_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new RuleDialog(_cfg.Theme, _allBrowsers) { Owner = this };
+            if (dlg.ShowDialog() == true && dlg.ResultRule != null)
+            {
+                _cfg.Rules.Add(dlg.ResultRule);
+                _cfg.SampleRulesSeeded = true;
+                SaveAndFlash();
+                BindRuleRows();
+            }
+        }
+
+        private void LoadSampleRules_Click(object sender, RoutedEventArgs e)
+        {
+            var existingKeys = new HashSet<string>(
+                _cfg.Rules.Select(r => $"{r.MatchKind}|{r.Pattern}"),
+                StringComparer.OrdinalIgnoreCase);
+
+            var added = false;
+            foreach (var sample in RuleMatcher.CreateDefaultSamples(L.IsEnglish))
+            {
+                var key = $"{sample.MatchKind}|{sample.Pattern}";
+                if (existingKeys.Add(key))
+                {
+                    _cfg.Rules.Add(sample);
+                    added = true;
+                }
+            }
+
+            _cfg.SampleRulesSeeded = true;
+            if (added)
+            {
+                SaveAndFlash();
+                BindRuleRows();
+            }
+        }
+
+        private void ToggleRuleEnabled_Click(object sender, RoutedEventArgs e)
+        {
+            if (((FrameworkElement)sender).Tag is not RuleRowVm vm) return;
+            vm.Rule.Enabled = !vm.Rule.Enabled;
+            SaveAndFlash();
+            BindRuleRows();
+        }
+
+        private void MoveRuleUp_Click(object sender, RoutedEventArgs e) => MoveRule(((FrameworkElement)sender).Tag as RuleRowVm, -1);
+        private void MoveRuleDown_Click(object sender, RoutedEventArgs e) => MoveRule(((FrameworkElement)sender).Tag as RuleRowVm, 1);
+
+        private void MoveRule(RuleRowVm vm, int delta)
+        {
+            if (vm == null || _cfg.Rules == null) return;
+            var idx = _cfg.Rules.FindIndex(r => string.Equals(r.Id, vm.Rule.Id, StringComparison.OrdinalIgnoreCase));
+            var targetIdx = idx + delta;
+            if (idx < 0 || targetIdx < 0 || targetIdx >= _cfg.Rules.Count) return;
+
+            var tmp = _cfg.Rules[idx];
+            _cfg.Rules[idx] = _cfg.Rules[targetIdx];
+            _cfg.Rules[targetIdx] = tmp;
+            SaveAndFlash();
+            BindRuleRows();
+        }
+
+        private void EditRule_Click(object sender, RoutedEventArgs e)
+        {
+            if (((FrameworkElement)sender).Tag is not RuleRowVm vm) return;
+            var dlg = new RuleDialog(_cfg.Theme, _allBrowsers, vm.Rule) { Owner = this };
+            if (dlg.ShowDialog() == true && dlg.ResultRule != null)
+            {
+                var idx = _cfg.Rules.FindIndex(r => string.Equals(r.Id, vm.Rule.Id, StringComparison.OrdinalIgnoreCase));
+                if (idx >= 0)
+                {
+                    _cfg.Rules[idx] = dlg.ResultRule;
+                }
+
+                SaveAndFlash();
+                BindRuleRows();
+            }
+        }
+
+        private void DeleteRule_Click(object sender, RoutedEventArgs e)
+        {
+            if (((FrameworkElement)sender).Tag is not RuleRowVm vm) return;
+            _cfg.Rules.RemoveAll(r => string.Equals(r.Id, vm.Rule.Id, StringComparison.OrdinalIgnoreCase));
+            SaveAndFlash();
+            BindRuleRows();
+        }
+
+        private void ExportConfig_Click(object sender, RoutedEventArgs e)
+        {
+            var scope = MessageBox.Show(
+                this,
+                L.Get("S_ExportScopePrompt"),
+                L.Get("S_ExportTitle"),
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            if (scope == MessageBoxResult.Cancel)
+            {
+                return;
+            }
+
+            var rulesOnly = scope == MessageBoxResult.No;
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = L.Get("S_BackupFilter"),
+                Title = L.Get("S_ExportTitle"),
+                FileName = rulesOnly
+                    ? $"LinkToBrowser-rules-{DateTime.Now:yyyyMMdd}.json"
+                    : $"LinkToBrowser-backup-{DateTime.Now:yyyyMMdd}.json"
+            };
+
+            if (dlg.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            try
+            {
+                var json = ConfigBackupService.ExportToJson(_cfg, rulesOnly);
+                ConfigBackupService.WriteTextUtf8(dlg.FileName, json);
+                MessageBox.Show(this, L.Format("S_ExportSuccess", dlg.FileName), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, L.Format("S_ExportFailed", ex.Message), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ImportConfig_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = L.Get("S_BackupFilter"),
+                Title = L.Get("S_ImportTitle")
+            };
+
+            if (dlg.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(dlg.FileName);
+                if (!ConfigBackupService.TryParseBackup(json, out var payload, out var parseErr))
+                {
+                    MessageBox.Show(this, L.Format("S_ImportInvalid", parseErr), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var ruleCount = payload.Config.Rules?.Count ?? 0;
+                var customCount = payload.Config.CustomBrowsers?.Count ?? 0;
+                var promptKey = payload.RulesOnly ? "S_ImportRulesOnlyModePrompt" : "S_ImportModePrompt";
+                var modeChoice = MessageBox.Show(
+                    this,
+                    L.Format(promptKey, ruleCount, customCount),
+                    L.Get("S_ImportTitle"),
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (modeChoice == MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+
+                var replaceAll = modeChoice == MessageBoxResult.No;
+                ConfigBackupService.CreatePreImportBackupIfExists(_configService.ConfigPath);
+                _cfg = ConfigBackupService.ApplyImport(_cfg, payload, replaceAll);
+
+                L.Apply(_cfg.Language, this);
+                UiHelpers.ApplyTheme(this, _cfg.Theme);
+                PopulateStaticCombos();
+                RefreshAllState();
+                SwitchPage(_currentPage);
+                SaveAndFlash();
+
+                MessageBox.Show(this, L.Get("S_ImportSuccess"), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, L.Format("S_ImportFailed", ex.Message), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

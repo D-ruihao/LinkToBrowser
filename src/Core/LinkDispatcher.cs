@@ -102,17 +102,40 @@ namespace LinkToBrowser.Core
                 };
             }
 
-            var mode = (_cfg.Modifier != ModifierKey.None && _isKeyDown(_cfg.Modifier))
-                ? GlobalMode.PickerPopup
-                : _cfg.GlobalMode;
+            if (_cfg.Modifier != ModifierKey.None && _isKeyDown(_cfg.Modifier))
+            {
+                return new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url };
+            }
 
-            return mode switch
+            if (_cfg.EnableRoutingRules && _cfg.Rules != null && _cfg.Rules.Count > 0)
+            {
+                var matchedRule = RuleMatcher.Match(url, _cfg.Rules);
+                if (matchedRule != null)
+                {
+                    return ExecuteRule(matchedRule, url);
+                }
+            }
+
+            return _cfg.GlobalMode switch
             {
                 GlobalMode.NativePassthrough => HandleNativePassthrough(url),
                 GlobalMode.DefaultBrowser => HandleDefaultBrowser(url),
                 GlobalMode.PickerPopup => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url },
                 GlobalMode.ClipboardOnly => HandleClipboardOnly(url),
                 GlobalMode.RecentBrowser => HandleRecentBrowser(url),
+                _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
+            };
+        }
+
+        private DispatchResult ExecuteRule(RoutingRule rule, string url)
+        {
+            return rule.Action switch
+            {
+                RuleActionKind.OpenTarget => ExecuteBrowserTarget(rule.TargetBrowser, url),
+                RuleActionKind.ClipboardOnly => HandleClipboardOnly(url),
+                RuleActionKind.PickerPopup => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url },
+                RuleActionKind.RecentBrowser => HandleRecentBrowser(url),
+                RuleActionKind.NativePassthrough => HandleNativePassthrough(url),
                 _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
             };
         }
@@ -213,7 +236,11 @@ namespace LinkToBrowser.Core
 
         private DispatchResult HandleDefaultBrowser(string url)
         {
-            var target = _cfg.DefaultBrowser;
+            return ExecuteBrowserTarget(_cfg.DefaultBrowser, url);
+        }
+
+        private DispatchResult ExecuteBrowserTarget(BrowserEntry target, string url)
+        {
             if (target == null || (string.IsNullOrWhiteSpace(target.ExecutablePath) && string.IsNullOrWhiteSpace(target.UserDataDir)))
             {
                 return new DispatchResult
@@ -256,6 +283,21 @@ namespace LinkToBrowser.Core
                         Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, cdpErr)
                     };
                 }
+            }
+
+            if (target.Kind == BrowserKind.RunningWindow)
+            {
+                var copyOk = _copy(url);
+                var reason = _cfg.EnableCdpForIsolatedBrowsers
+                    ? "DevToolsActivePort unavailable"
+                    : "CDP integration is disabled";
+                return new DispatchResult
+                {
+                    Kind = DispatchKind.ShowClipboard,
+                    Url = url,
+                    CopyOk = copyOk,
+                    Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, reason)
+                };
             }
 
             return LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url);

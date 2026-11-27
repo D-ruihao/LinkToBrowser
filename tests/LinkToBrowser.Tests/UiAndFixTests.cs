@@ -515,6 +515,49 @@ namespace LinkToBrowser.Tests
             }
         }
 
+        [Fact]
+        public void RuleDialog_PatternBoxIsMultiline_AndButtonsFitWithinWindowWidth()
+        {
+            bool acceptsReturn = false;
+            double winWidth = 0;
+            double rootDesiredWidth = 0;
+            double maxRightEdge = 0;
+
+            _wpf.Run(() =>
+            {
+                var win = new RuleDialog(ThemeMode.Dark, new[]
+                {
+                    new BrowserEntry { Id = "edge", Name = "Microsoft Edge", ExecutablePath = @"C:\msedge.exe" }
+                });
+                winWidth = win.Width;
+                var patternBox = (System.Windows.Controls.TextBox)win.FindName("PatternBox");
+                acceptsReturn = patternBox.AcceptsReturn;
+
+                var root = (FrameworkElement)win.Content;
+                root.Measure(new Size(winWidth, double.PositiveInfinity));
+                rootDesiredWidth = root.DesiredSize.Width;
+                root.Arrange(new Rect(0, 0, winWidth, root.DesiredSize.Height));
+                root.UpdateLayout();
+
+                foreach (var btn in FindVisualChildren<System.Windows.Controls.Button>(root))
+                {
+                    if (btn.Visibility == Visibility.Visible)
+                    {
+                        var rightEdge = btn.TransformToAncestor(root).Transform(new Point(btn.ActualWidth, 0)).X;
+                        if (rightEdge > maxRightEdge) maxRightEdge = rightEdge;
+                    }
+                }
+
+                win.Close();
+            });
+
+            Assert.True(acceptsReturn);
+            Assert.True(rootDesiredWidth > 0 && rootDesiredWidth <= winWidth + 0.5,
+                $"RuleDialog root desired width {rootDesiredWidth} exceeds {winWidth}");
+            Assert.True(maxRightEdge <= winWidth + 0.5,
+                $"RuleDialog button right edge {maxRightEdge} exceeds {winWidth}");
+        }
+
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
         {
             if (parent == null) yield break;

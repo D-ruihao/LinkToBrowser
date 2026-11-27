@@ -46,6 +46,14 @@
                                    Appearance="Secondary"
                                    Margin="0,0,0,4"
                                    Click="NavGeneral_Click" />
+                        <ui:Button x:Name="NavRulesBtn"
+                                   HorizontalAlignment="Stretch"
+                                   HorizontalContentAlignment="Left"
+                                   Content="{DynamicResource S_NavRules}"
+                                   Icon="{ui:SymbolIcon Filter20}"
+                                   Appearance="Transparent"
+                                   Margin="0,0,0,4"
+                                   Click="NavRules_Click" />
                         <ui:Button x:Name="NavBrowsersBtn"
                                    HorizontalAlignment="Stretch"
                                    HorizontalContentAlignment="Left"
@@ -413,7 +421,145 @@
                             </ui:CardControl>
                         </StackPanel>
 
-                        <!-- 页 2：浏览器管理 -->
+                        <!-- 页 2：分流规则 -->
+                        <StackPanel x:Name="RulesPage" Visibility="Collapsed">
+                            <ui:CardControl Margin="0,0,0,12">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource S_RulesEnableTitle}" FontWeight="SemiBold" FontSize="13.5" />
+                                        <TextBlock Text="{DynamicResource S_RulesEnableDesc}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="EnableRulesToggle" Checked="EnableRulesToggle_Changed" Unchecked="EnableRulesToggle_Changed" />
+                            </ui:CardControl>
+
+                            <WrapPanel Margin="0,0,0,10">
+                                <ui:Button Content="{DynamicResource S_AddRule}"
+                                           Icon="{ui:SymbolIcon Add20}"
+                                           Appearance="Primary"
+                                           Margin="0,0,8,6"
+                                           Click="AddRule_Click" />
+                                <ui:Button Content="{DynamicResource S_LoadSamples}"
+                                           Icon="{ui:SymbolIcon ArrowSync20}"
+                                           Appearance="Secondary"
+                                           Margin="0,0,8,6"
+                                           Click="LoadSampleRules_Click" />
+                                <ui:Button Content="{DynamicResource S_ExportBackup}"
+                                           Appearance="Secondary"
+                                           Margin="0,0,8,6"
+                                           Click="ExportConfig_Click" />
+                                <ui:Button Content="{DynamicResource S_ImportBackup}"
+                                           Appearance="Secondary"
+                                           Margin="0,0,0,6"
+                                           Click="ImportConfig_Click" />
+                            </WrapPanel>
+
+                            <Border CornerRadius="8"
+                                    Padding="12,10"
+                                    Margin="0,0,0,12"
+                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel>
+                                    <ui:TextBox x:Name="RuleTestBox"
+                                                Icon="{ui:SymbolIcon Search20}"
+                                                PlaceholderText="{DynamicResource S_RulesTestHint}"
+                                                TextChanged="RuleTestBox_TextChanged" />
+                                    <TextBlock x:Name="RuleTestResultText"
+                                               FontSize="12"
+                                               Margin="2,6,2,0"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </Border>
+
+                            <ItemsControl x:Name="RulesListControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8"
+                                                Padding="12,10"
+                                                Margin="0,0,0,6"
+                                                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="26" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <CheckBox Grid.Column="0"
+                                                          IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,8,0"
+                                                          Tag="{Binding}"
+                                                          Click="ToggleRuleEnabled_Click" />
+
+                                                <Grid Grid.Column="1" Width="20" Height="20" VerticalAlignment="Center">
+                                                    <Image Source="{Binding Icon}" Width="20" Height="20" />
+                                                    <ui:SymbolIcon Symbol="Globe20" Visibility="{Binding FallbackIconVisibility}" />
+                                                </Grid>
+
+                                                <StackPanel Grid.Column="2" Margin="8,0,12,0" VerticalAlignment="Center">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5" TextTrimming="CharacterEllipsis" />
+                                                        <Border Grid.Column="1"
+                                                                CornerRadius="4"
+                                                                Padding="6,1"
+                                                                Margin="8,0,0,0"
+                                                                VerticalAlignment="Center"
+                                                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                            <TextBlock Text="{Binding MatchKindLabel}" FontSize="11" />
+                                                        </Border>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Subtitle}"
+                                                               FontSize="11.5"
+                                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Subtitle}"
+                                                               Margin="0,2,0,0" />
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <ui:Button Icon="{ui:SymbolIcon ArrowUp20}"
+                                                               Appearance="Transparent"
+                                                               ToolTip="{DynamicResource S_TipMoveUp}"
+                                                               Tag="{Binding}"
+                                                               Click="MoveRuleUp_Click" />
+                                                    <ui:Button Icon="{ui:SymbolIcon ArrowDown20}"
+                                                               Appearance="Transparent"
+                                                               ToolTip="{DynamicResource S_TipMoveDown}"
+                                                               Tag="{Binding}"
+                                                               Margin="0,0,4,0"
+                                                               Click="MoveRuleDown_Click" />
+                                                    <ui:Button Icon="{ui:SymbolIcon Edit20}"
+                                                               Appearance="Transparent"
+                                                               ToolTip="{DynamicResource S_TipEdit}"
+                                                               Tag="{Binding}"
+                                                               Click="EditRule_Click" />
+                                                    <ui:Button Icon="{ui:SymbolIcon Delete20}"
+                                                               Appearance="Transparent"
+                                                               ToolTip="{DynamicResource S_TipDelete}"
+                                                               Tag="{Binding}"
+                                                               Click="DeleteRule_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 页 3：浏览器管理 -->
                         <StackPanel x:Name="BrowsersPage" Visibility="Collapsed">
                             <Grid Margin="0,0,0,12">
                                 <Grid.ColumnDefinitions>
@@ -527,7 +673,7 @@
                             </ItemsControl>
                         </StackPanel>
 
-                        <!-- 页 3：关于与诊断 -->
+                        <!-- 页 4：关于与诊断 -->
                         <StackPanel x:Name="AboutPage" Visibility="Collapsed">
                             <ui:CardControl Margin="0,0,0,8">
                                 <ui:CardControl.Header>
@@ -552,7 +698,11 @@
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                 </ui:CardControl.Header>
-                                <ui:Button Content="{DynamicResource S_BtnOpen}" Appearance="Secondary" Click="OpenConfig_Click" />
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button Content="{DynamicResource S_BtnOpen}" Appearance="Secondary" Margin="0,0,8,0" Click="OpenConfig_Click" />
+                                    <ui:Button Content="{DynamicResource S_Export}" Appearance="Secondary" Margin="0,0,8,0" Click="ExportConfig_Click" />
+                                    <ui:Button Content="{DynamicResource S_Import}" Appearance="Secondary" Click="ImportConfig_Click" />
+                                </StackPanel>
                             </ui:CardControl>
 
                             <ui:CardControl Margin="0,0,0,8">
@@ -595,7 +745,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                        <TextBlock x:Name="AboutVersionText" Text="LinkToBrowser v2.0.1" FontWeight="SemiBold" FontSize="14" />
+                                        <TextBlock x:Name="AboutVersionText" Text="LinkToBrowser v2.1.1" FontWeight="SemiBold" FontSize="14" />
                                         <TextBlock Text="{DynamicResource S_AboutDesc}"
                                                    FontSize="12"
                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"

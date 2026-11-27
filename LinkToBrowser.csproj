@@ -11,7 +11,7 @@
     <EnableDefaultItems>false</EnableDefaultItems>
     <AssemblyName>LinkToBrowser</AssemblyName>
     <RootNamespace>LinkToBrowser</RootNamespace>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <Product>LinkToBrowser</Product>
     <Description>Windows 11 URL router, browser picker, and clipboard link handler</Description>
     <Copyright>Copyright (c) 2026 LinkToBrowser Contributors</Copyright>

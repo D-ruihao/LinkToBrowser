@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinkToBrowser", "LinkToBrow
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinkToBrowser.Tests", "tests\LinkToBrowser.Tests\LinkToBrowser.Tests.csproj", "{B7C56F2D-3E4A-4B0F-8B2D-222222222222}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScreenshotGen", "tools\ScreenshotGen\ScreenshotGen.csproj", "{C9D67A3E-4F5B-4C1A-9C3E-333333333333}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{B7C56F2D-3E4A-4B0F-8B2D-222222222222}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7C56F2D-3E4A-4B0F-8B2D-222222222222}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7C56F2D-3E4A-4B0F-8B2D-222222222222}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9D67A3E-4F5B-4C1A-9C3E-333333333333}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9D67A3E-4F5B-4C1A-9C3E-333333333333}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9D67A3E-4F5B-4C1A-9C3E-333333333333}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9D67A3E-4F5B-4C1A-9C3E-333333333333}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
