@@ -16,9 +16,12 @@
 
 ## 它解决什么问题？
 
-在日常使用 Windows 11 时，如果你同时打开了多个浏览器（如 Chrome、Edge、多账号配置或指纹浏览器窗口），从微信、QQ、编辑器等应用直接点击外部链接，系统只能固定丢给单一默认浏览器，往往需要手动复制粘贴网址。
+在日常使用 Windows 11 时，从微信、QQ、编辑器或邮件客户端点击外部链接经常遇到两个痛点：
 
-`LinkToBrowser` 注册为系统的 `HTTP` / `HTTPS` 链接处理入口后，可以按你的当前需要灵活转发每一个点击的链接：
+1. **多浏览器与多账号场景受限**：系统「默认应用」只能固定绑定一个浏览器，无法按需切换 Chrome、Edge、多用户 Profile 或不同打开方式。
+2. **外部链接无法直接跳转到指纹浏览器窗口**：独立 / 指纹浏览器为了保持环境隔离，通常无法设为系统默认浏览器；从外部软件点击链接时，不仅不能自动打开到你正在使用的指纹浏览器窗口中，往往只能反复手动复制粘贴网址。
+
+`LinkToBrowser` 注册为系统 `HTTP` / `HTTPS` 处理入口后，会按你的需求灵活路由每一个点击的链接：
 
 ## 核心功能
 
@@ -44,11 +47,11 @@
 
 | 设置主面板（含最近聚焦模式） | 浏览器选择弹窗 |
 | :---: | :---: |
-| ![Settings Window](docs/screenshots/settings-en.png) | ![Picker Window](docs/screenshots/picker-en.png) |
+| ![Settings Window](docs/screenshots/settings-v21.png) | ![Picker Window](docs/screenshots/picker-v21.png) |
 
 | 剪贴板确认浮窗 |
 | :---: |
-| ![Clipboard Popup](docs/screenshots/clipboard-en.png) |
+| ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
 
 ---
 

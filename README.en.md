@@ -16,7 +16,10 @@
 
 ## Why LinkToBrowser?
 
-When you work across multiple browsers, Chrome/Edge profiles, or isolated browser environments on Windows 11, clicking a link inside chat apps or editors normally opens a single static system browser.
+Clicking external links from chat apps, editors, or mail clients on Windows 11 often runs into two limitations:
+
+1. **Single default browser lock-in**: Windows only allows one fixed default browser for `HTTP`/`HTTPS`, making it inconvenient to switch across Chrome, Edge, multiple user profiles, or clipboard workflows.
+2. **No direct routing into isolated / antidetect browser windows**: Isolated and antidetect browsers typically cannot act as your Windows default browser or accept external URL launches via standard shell commands, leaving you unable to jump external links straight into an active window without copying and pasting manually.
 
 `LinkToBrowser` acts as your per-user `HTTP` / `HTTPS` handler and routes each link click according to your workflow:
 
@@ -45,11 +48,11 @@ When you work across multiple browsers, Chrome/Edge profiles, or isolated browse
 
 | Settings Window (Last Focused Mode) | Browser Picker Popup |
 | :---: | :---: |
-| ![Settings Window](docs/screenshots/settings-en.png) | ![Picker Window](docs/screenshots/picker-en.png) |
+| ![Settings Window](docs/screenshots/settings-v21.png) | ![Picker Window](docs/screenshots/picker-v21.png) |
 
 | Clipboard Confirmation Popup |
 | :---: |
-| ![Clipboard Popup](docs/screenshots/clipboard-en.png) |
+| ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
 
 ---
 
