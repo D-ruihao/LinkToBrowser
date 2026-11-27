@@ -128,7 +128,7 @@ namespace LinkToBrowser
                         Kind = DispatchKind.ShowClipboard,
                         Url = failedUrl,
                         CopyOk = copyOk,
-                        Warning = $"启动浏览器失败，已复制到剪贴板：{err}"
+                        Warning = L.Format("S_WarnLaunchFallback", err)
                     };
                     ShowClipboardWindow(app, fallbackResult, cfg, configService, logService, registration, selfExe);
                 });

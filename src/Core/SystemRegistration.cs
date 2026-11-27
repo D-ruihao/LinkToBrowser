@@ -39,7 +39,7 @@ namespace LinkToBrowser.Core
             {
                 capKey.SetValue("ApplicationName", "LinkToBrowser");
                 capKey.SetValue("ApplicationIcon", $"{_selfExePath},0");
-                capKey.SetValue("ApplicationDescription", "快速切换系统默认、指定浏览器、弹窗选择或复制链接到剪贴板");
+                capKey.SetValue("ApplicationDescription", L.Get("S_RegAppDescription"));
 
                 using (var assocKey = capKey.CreateSubKey("URLAssociations"))
                 {

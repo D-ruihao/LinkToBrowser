@@ -24,6 +24,7 @@ namespace LinkToBrowser.Core
 
             // Registration card & banners
             ["S_RegCardTitle"] = "系统默认浏览器接管",
+            ["S_RegAppDescription"] = "链接路由、浏览器选择器与剪贴板处理工具",
             ["S_RegBtnRegister"] = "立即注册",
             ["S_RegBtnUpdatePath"] = "更新注册路径",
             ["S_RegBtnOpenDefaultApps"] = "打开默认应用设置",
@@ -199,6 +200,7 @@ namespace LinkToBrowser.Core
 
             // Registration card & banners
             ["S_RegCardTitle"] = "System Default Browser Handler",
+            ["S_RegAppDescription"] = "URL router, browser picker, and clipboard link handler",
             ["S_RegBtnRegister"] = "Register Now",
             ["S_RegBtnUpdatePath"] = "Update Path",
             ["S_RegBtnOpenDefaultApps"] = "Open Default Apps",

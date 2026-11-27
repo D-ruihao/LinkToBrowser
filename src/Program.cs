@@ -38,8 +38,9 @@ namespace LinkToBrowser
                 case CliKind.Register:
                     try
                     {
-                        registration.Register();
                         var regCfg = configService.Load();
+                        L.Apply(regCfg.Language);
+                        registration.Register();
                         if (registration.TrySnapshot(regCfg))
                         {
                             configService.Save(regCfg);

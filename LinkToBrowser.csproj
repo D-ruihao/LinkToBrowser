@@ -12,6 +12,9 @@
     <AssemblyName>LinkToBrowser</AssemblyName>
     <RootNamespace>LinkToBrowser</RootNamespace>
     <Version>2.0.1</Version>
+    <Product>LinkToBrowser</Product>
+    <Description>Windows 11 URL router, browser picker, and clipboard link handler</Description>
+    <Copyright>Copyright (c) 2026 LinkToBrowser Contributors</Copyright>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 

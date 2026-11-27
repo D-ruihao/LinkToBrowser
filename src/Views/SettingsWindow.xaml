@@ -175,8 +175,8 @@
                                     </RadioButton>
                                     <ComboBox x:Name="OriginalProgIdCombo"
                                               Grid.Column="1"
-                                              Width="185"
-                                              MaxWidth="185"
+                                              Width="220"
+                                              MaxWidth="220"
                                               Margin="8,0,8,0"
                                               VerticalAlignment="Center"
                                               DisplayMemberPath="Display"
