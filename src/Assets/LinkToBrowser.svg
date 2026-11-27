@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="l2b-v1-a" x1="8.9" y1="54.3" x2="119.1" y2="73.7" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="l2b-v1-b" x1="8.9" y1="54.3" x2="119.1" y2="73.7" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9333EA"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(64 64) scale(0.98) translate(-64 -64)">
+    <path d="M 65.9 42.2 A 27 27 0 0 0 50 37 L 44 37 A 27 27 0 0 0 44 91 L 50 91 A 27 27 0 0 0 65.9 85.8" stroke="url(#l2b-v1-b)" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 62 64 Q 70 64 78 72 L 106 100" stroke="url(#l2b-v1-b)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M 82 104 L 110 104 L 110 76" stroke="url(#l2b-v1-b)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 42 64 L 62 64 Q 70 64 78 56 L 106 28" stroke="url(#l2b-v1-a)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M 82 24 L 110 24 L 110 52" stroke="url(#l2b-v1-a)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

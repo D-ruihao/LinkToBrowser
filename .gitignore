@@ -1,0 +1,11 @@
+bin/
+obj/
+dist/
+.nuget/
+.vs/
+.superpowers/
+*.user
+*.suo
+config.json
+config.json.tmp
+*.log
