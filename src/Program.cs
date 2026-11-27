@@ -94,7 +94,15 @@ namespace LinkToBrowser
                         {
                             var ok = CommandLineHelper.TrySplit(cmd, File.Exists, out var exe, out var template);
                             return (ok, exe, template);
-                        });
+                        },
+                        () => RecentBrowserService.FindMostRecentBrowser(cfg, selfExe),
+                        (userDataDir, url) =>
+                        {
+                            var ok = CdpClient.TryOpenTab(userDataDir, url, out var err);
+                            return (ok, err);
+                        },
+                        RecentBrowserService.ActivateWindow,
+                        userDataDir => RecentBrowserService.FindWindowByUserDataDir(userDataDir, selfExe));
 
                     var result = dispatcher.Dispatch(inv);
                     if (result.Kind == DispatchKind.Done)

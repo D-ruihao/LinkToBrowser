@@ -52,6 +52,14 @@ namespace LinkToBrowser.Core
             ["S_ModePickerDesc"] = "点击链接时在光标附近弹出选择窗口，支持 1–9 快选与筛选",
             ["S_ModeClipboardTitle"] = "默认复制到剪贴板",
             ["S_ModeClipboardDesc"] = "拦截链接并复制到剪贴板，按需弹出快捷确认窗口",
+            ["S_ModeRecentTitle"] = "最近聚焦的浏览器",
+            ["S_ModeRecentDesc"] = "自动跳转到最近一次使用或点击聚焦的浏览器窗口（含已最小化窗口）",
+            ["S_FallbackPicker"] = "无窗口时：弹出选择",
+            ["S_FallbackClipboard"] = "无窗口时：复制剪贴板",
+            ["S_FallbackDefault"] = "无窗口时：指定浏览器",
+            ["S_FallbackNative"] = "无窗口时：Windows 原生",
+            ["S_EnableCdpTitle"] = "兼容调试端口直跳独立浏览器 (CDP)",
+            ["S_EnableCdpDesc"] = "检测到浏览器窗口开启 DevToolsActivePort 时，直接向该窗口新建标签页",
             ["S_SelectOriginalBrowser"] = "(请选择原系统默认浏览器...)",
 
             // Behavior & Appearance
@@ -89,6 +97,7 @@ namespace LinkToBrowser.Core
             ["S_KindCustom"] = "自定义",
             ["S_KindProfile"] = "多配置",
             ["S_KindSystem"] = "系统识别",
+            ["S_KindRunning"] = "运行窗口",
             ["S_StatusHidden"] = "已隐藏",
             ["S_StatusVisible"] = "显示中",
             ["S_BtnTest"] = "测试",
@@ -132,6 +141,8 @@ namespace LinkToBrowser.Core
             ["S_WarnInvalidCommand"] = "原默认浏览器 ({0}) 启动程序不可用，请从下方选择。",
             ["S_WarnNoDefaultTarget"] = "尚未指定默认浏览器，请从下方选择。",
             ["S_WarnLaunchFallback"] = "启动浏览器失败，已复制到剪贴板：{0}",
+            ["S_WarnCdpFallback"] = "向目标浏览器窗口发送新标签页失败，已复制到剪贴板：{0}",
+            ["S_WarnIsolatedNotRunning"] = "目标隔离浏览器窗口（{0}）当前未运行或无法接入，已复制到剪贴板：{1}",
             ["S_WarnClipBusy"] = "剪贴板被占用，复制失败：URL 已写入 links.log，请手动从下方复制。",
 
             // Picker Window
@@ -228,6 +239,14 @@ namespace LinkToBrowser.Core
             ["S_ModePickerDesc"] = "Show a quick picker near the cursor on link click, with 1–9 hotkeys and live filter",
             ["S_ModeClipboardTitle"] = "Copy to Clipboard",
             ["S_ModeClipboardDesc"] = "Intercept links and copy them to the clipboard with an optional popup",
+            ["S_ModeRecentTitle"] = "Last Focused Browser",
+            ["S_ModeRecentDesc"] = "Open links in the most recently focused browser window (including minimized windows)",
+            ["S_FallbackPicker"] = "Fallback: Browser Picker",
+            ["S_FallbackClipboard"] = "Fallback: Clipboard",
+            ["S_FallbackDefault"] = "Fallback: Specific Browser",
+            ["S_FallbackNative"] = "Fallback: Windows Native",
+            ["S_EnableCdpTitle"] = "Use DevToolsActivePort (CDP) for isolated browsers",
+            ["S_EnableCdpDesc"] = "Open new tabs directly via local DevToolsActivePort when present on the active window",
             ["S_SelectOriginalBrowser"] = "(Select original default browser...)",
 
             // Behavior & Appearance
@@ -265,6 +284,7 @@ namespace LinkToBrowser.Core
             ["S_KindCustom"] = "Custom",
             ["S_KindProfile"] = "Profile",
             ["S_KindSystem"] = "System",
+            ["S_KindRunning"] = "Active",
             ["S_StatusHidden"] = "Hidden",
             ["S_StatusVisible"] = "Visible",
             ["S_BtnTest"] = "Test",
@@ -308,6 +328,8 @@ namespace LinkToBrowser.Core
             ["S_WarnInvalidCommand"] = "Original default browser ({0}) executable is unavailable. Please choose below.",
             ["S_WarnNoDefaultTarget"] = "No default browser is selected. Please choose one below.",
             ["S_WarnLaunchFallback"] = "Failed to launch browser; copied URL to clipboard: {0}",
+            ["S_WarnCdpFallback"] = "Failed to open tab in target browser window; copied URL to clipboard: {0}",
+            ["S_WarnIsolatedNotRunning"] = "Target isolated browser ({0}) is not active; copied URL to clipboard: {1}",
             ["S_WarnClipBusy"] = "Clipboard is busy; copy failed. URL was saved to links.log; please copy manually below.",
 
             // Picker Window

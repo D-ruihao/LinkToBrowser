@@ -251,7 +251,7 @@
                             <!-- 模式 4：默认复制到剪贴板 -->
                             <Border CornerRadius="8"
                                     Padding="14,11"
-                                    Margin="0,0,0,16"
+                                    Margin="0,0,0,6"
                                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                     BorderThickness="1"
@@ -268,6 +268,42 @@
                                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
                                 </RadioButton>
+                            </Border>
+
+                            <!-- 模式 5：最近聚焦的浏览器 -->
+                            <Border CornerRadius="8"
+                                    Padding="14,11"
+                                    Margin="0,0,0,16"
+                                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    MouseLeftButtonUp="ModeRecentCard_Click">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <RadioButton x:Name="ModeRecentRadio"
+                                                 Grid.Column="0"
+                                                 HorizontalContentAlignment="Stretch"
+                                                 GroupName="GlobalMode"
+                                                 Checked="ModeRadio_Changed">
+                                        <StackPanel Margin="4,0,0,0">
+                                            <TextBlock Text="{DynamicResource S_ModeRecentTitle}" FontWeight="SemiBold" FontSize="13.5" />
+                                            <TextBlock Text="{DynamicResource S_ModeRecentDesc}"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </RadioButton>
+                                    <ComboBox x:Name="RecentFallbackCombo"
+                                              Grid.Column="1"
+                                              Width="210"
+                                              MaxWidth="210"
+                                              Margin="8,0,0,0"
+                                              VerticalAlignment="Center"
+                                              SelectionChanged="RecentFallbackCombo_SelectionChanged" />
+                                </Grid>
                             </Border>
 
                             <TextBlock Text="{DynamicResource S_BehaviorHeader}" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8" />
@@ -335,6 +371,19 @@
                                     </StackPanel>
                                 </ui:CardControl.Header>
                                 <ui:ToggleSwitch x:Name="StripTrackingToggle" Checked="SettingToggle_Changed" Unchecked="SettingToggle_Changed" />
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,6">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource S_EnableCdpTitle}" FontWeight="SemiBold" FontSize="13.5" />
+                                        <TextBlock Text="{DynamicResource S_EnableCdpDesc}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="EnableCdpToggle" Checked="ChromiumProfilesToggle_Changed" Unchecked="ChromiumProfilesToggle_Changed" />
                             </ui:CardControl>
 
                             <ui:CardControl Margin="0,0,0,6">

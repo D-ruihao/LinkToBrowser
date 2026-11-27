@@ -44,6 +44,7 @@ namespace LinkToBrowser.Views
             {
                 BrowserKind.Custom => L.Get("S_KindCustom"),
                 BrowserKind.ChromiumProfile => L.Get("S_KindProfile"),
+                BrowserKind.RunningWindow => L.Get("S_KindRunning"),
                 _ => L.Get("S_KindSystem")
             };
             public string CommandPreview => string.IsNullOrWhiteSpace(Entry.ArgumentsTemplate)
@@ -142,6 +143,14 @@ namespace LinkToBrowser.Views
                     new ComboItem<LanguageMode> { Value = LanguageMode.EnUs, Label = L.Get("S_LangEnUs") },
                     new ComboItem<LanguageMode> { Value = LanguageMode.System, Label = L.Get("S_LangSystem") }
                 };
+
+                RecentFallbackCombo.ItemsSource = new[]
+                {
+                    new ComboItem<RecentFallbackMode> { Value = RecentFallbackMode.PickerPopup, Label = L.Get("S_FallbackPicker") },
+                    new ComboItem<RecentFallbackMode> { Value = RecentFallbackMode.ClipboardOnly, Label = L.Get("S_FallbackClipboard") },
+                    new ComboItem<RecentFallbackMode> { Value = RecentFallbackMode.DefaultBrowser, Label = L.Get("S_FallbackDefault") },
+                    new ComboItem<RecentFallbackMode> { Value = RecentFallbackMode.NativePassthrough, Label = L.Get("S_FallbackNative") }
+                };
             }
             finally
             {
@@ -154,7 +163,7 @@ namespace LinkToBrowser.Views
             _isLoadingUi = true;
             try
             {
-                _allBrowsers = BrowserCatalog.GetAll(_cfg, _selfExe, includeHidden: true);
+                _allBrowsers = BrowserCatalog.GetAllWithRunning(_cfg, _selfExe, includeHidden: true);
                 RefreshRegistrationBanner();
                 BindGeneralControls();
                 BindBrowserRows();
@@ -248,6 +257,7 @@ namespace LinkToBrowser.Views
             ModeDefaultRadio.IsChecked = _cfg.GlobalMode == GlobalMode.DefaultBrowser;
             ModePickerRadio.IsChecked = _cfg.GlobalMode == GlobalMode.PickerPopup;
             ModeClipboardRadio.IsChecked = _cfg.GlobalMode == GlobalMode.ClipboardOnly;
+            ModeRecentRadio.IsChecked = _cfg.GlobalMode == GlobalMode.RecentBrowser;
 
             var (progChoices, selectedProgIndex) = BuildProgIdChoices(_cfg.OriginalDefaultProgId, _allBrowsers);
             OriginalProgIdCombo.ItemsSource = progChoices;
@@ -278,11 +288,13 @@ namespace LinkToBrowser.Views
             ShowClipPopupToggle.IsChecked = _cfg.ShowClipboardPopup;
             ChromiumProfilesToggle.IsChecked = _cfg.ShowChromiumProfiles;
             StripTrackingToggle.IsChecked = _cfg.StripTrackingParams;
+            EnableCdpToggle.IsChecked = _cfg.EnableCdpForIsolatedBrowsers;
 
             SelectComboItem(AutoCloseCombo, _cfg.ClipboardAutoCloseSeconds, 0);
             SelectComboItem(ModifierCombo, _cfg.Modifier, ModifierKey.None);
             SelectComboItem(ThemeCombo, _cfg.Theme, ThemeMode.System);
             SelectComboItem(LanguageCombo, _cfg.Language, LanguageMode.ZhCn);
+            SelectComboItem(RecentFallbackCombo, _cfg.RecentBrowserFallback, RecentFallbackMode.PickerPopup);
         }
 
         public static (List<ProgIdChoice> Choices, int SelectedIndex) BuildProgIdChoices(
@@ -416,6 +428,11 @@ namespace LinkToBrowser.Views
 
         private void ModePickerCard_Click(object sender, MouseButtonEventArgs e) => ModePickerRadio.IsChecked = true;
         private void ModeClipboardCard_Click(object sender, MouseButtonEventArgs e) => ModeClipboardRadio.IsChecked = true;
+        private void ModeRecentCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is DependencyObject d && IsInsideControl<ComboBox>(d)) return;
+            ModeRecentRadio.IsChecked = true;
+        }
 
         private static bool IsInsideControl<T>(DependencyObject d) where T : DependencyObject
         {
@@ -436,6 +453,7 @@ namespace LinkToBrowser.Views
             else if (ModeDefaultRadio.IsChecked == true) _cfg.GlobalMode = GlobalMode.DefaultBrowser;
             else if (ModePickerRadio.IsChecked == true) _cfg.GlobalMode = GlobalMode.PickerPopup;
             else if (ModeClipboardRadio.IsChecked == true) _cfg.GlobalMode = GlobalMode.ClipboardOnly;
+            else if (ModeRecentRadio.IsChecked == true) _cfg.GlobalMode = GlobalMode.RecentBrowser;
 
             if (_cfg.GlobalMode == GlobalMode.DefaultBrowser && _cfg.DefaultBrowser == null &&
                 DefaultBrowserCombo.ItemsSource is IList<BrowserEntry> defaultChoices && defaultChoices.Count > 0)
@@ -473,6 +491,7 @@ namespace LinkToBrowser.Views
                 ExecutablePath = entry.ExecutablePath,
                 ArgumentsTemplate = entry.ArgumentsTemplate,
                 ProgId = entry.ProgId,
+                UserDataDir = entry.UserDataDir,
                 Kind = entry.Kind
             };
             SaveAndFlash();
@@ -490,6 +509,7 @@ namespace LinkToBrowser.Views
         {
             if (_isLoadingUi) return;
             _cfg.ShowChromiumProfiles = ChromiumProfilesToggle.IsChecked == true;
+            _cfg.EnableCdpForIsolatedBrowsers = EnableCdpToggle.IsChecked == true;
             SaveAndFlash();
             RefreshAllState();
         }
@@ -524,6 +544,13 @@ namespace LinkToBrowser.Views
             PopulateStaticCombos();
             RefreshAllState();
             SwitchPage(_currentPage);
+            SaveAndFlash();
+        }
+
+        private void RecentFallbackCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoadingUi || RecentFallbackCombo.SelectedItem is not ComboItem<RecentFallbackMode> item) return;
+            _cfg.RecentBrowserFallback = item.Value;
             SaveAndFlash();
         }
 
@@ -644,6 +671,25 @@ namespace LinkToBrowser.Views
         private void TestBrowser_Click(object sender, RoutedEventArgs e)
         {
             if (((FrameworkElement)sender).Tag is not BrowserRowVm vm) return;
+
+            if (_cfg.EnableCdpForIsolatedBrowsers &&
+                !string.IsNullOrWhiteSpace(vm.Entry.UserDataDir) &&
+                CdpClient.HasDevToolsActivePort(vm.Entry.UserDataDir))
+            {
+                if (CdpClient.TryOpenTab(vm.Entry.UserDataDir, "https://example.com", out var cdpErr))
+                {
+                    var hwnd = RecentBrowserService.FindWindowByUserDataDir(vm.Entry.UserDataDir, _selfExe);
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        RecentBrowserService.ActivateWindow(hwnd);
+                    }
+                    return;
+                }
+
+                MessageBox.Show(this, L.Format("S_MsgTestFailed", cdpErr), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var launcher = new BrowserLauncher(_selfExe);
             if (!launcher.TryLaunch(vm.Entry.ExecutablePath, vm.Entry.ArgumentsTemplate, "https://example.com", out var err))
             {

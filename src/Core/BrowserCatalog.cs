@@ -309,6 +309,69 @@ namespace LinkToBrowser.Core
             return Arrange(collected, config, includeHidden);
         }
 
+        public static List<BrowserEntry> GetAllWithRunning(AppConfig cfg, string selfExePath, bool includeHidden = true)
+        {
+            var config = cfg ?? new AppConfig();
+            var baseEntries = GetAll(config, selfExePath, includeHidden);
+            var running = RecentBrowserService.GetRunningIsolatedBrowsers(config, selfExePath, includeHidden);
+            return MergeWithRunning(baseEntries, running, config, includeHidden);
+        }
+
+        public static List<BrowserEntry> MergeWithRunning(
+            IReadOnlyList<BrowserEntry> baseEntries,
+            IReadOnlyList<BrowserEntry> runningEntries,
+            AppConfig cfg,
+            bool includeHidden = true)
+        {
+            var config = cfg ?? new AppConfig();
+            if (runningEntries == null || runningEntries.Count == 0)
+            {
+                return baseEntries != null ? new List<BrowserEntry>(baseEntries) : new List<BrowserEntry>();
+            }
+
+            // Place newly discovered active isolated windows before static entries unless already explicitly ordered
+            var combined = new List<BrowserEntry>(runningEntries.Count + (baseEntries?.Count ?? 0));
+            combined.AddRange(runningEntries);
+            if (baseEntries != null)
+            {
+                combined.AddRange(baseEntries);
+            }
+
+            var orderedIds = new HashSet<string>(config.BrowserOrder ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+            var unorderedRunning = new List<BrowserEntry>();
+            var rest = new List<BrowserEntry>();
+            var hidden = new HashSet<string>(config.HiddenBrowserIds ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in combined)
+            {
+                if (item == null || string.IsNullOrEmpty(item.Id) || !seen.Add(item.Id))
+                {
+                    continue;
+                }
+
+                if (!includeHidden && hidden.Contains(item.Id))
+                {
+                    continue;
+                }
+
+                if (item.Kind == BrowserKind.RunningWindow && !orderedIds.Contains(item.Id))
+                {
+                    unorderedRunning.Add(item);
+                }
+                else
+                {
+                    rest.Add(item);
+                }
+            }
+
+            var arrangedRest = Arrange(rest, config, includeHidden);
+            var final = new List<BrowserEntry>(unorderedRunning.Count + arrangedRest.Count);
+            final.AddRange(unorderedRunning);
+            final.AddRange(arrangedRest);
+            return final;
+        }
+
         private static string NormalizePath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))

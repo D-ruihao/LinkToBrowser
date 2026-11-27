@@ -4,7 +4,8 @@ namespace LinkToBrowser.Models
     {
         Registry,
         ChromiumProfile,
-        Custom
+        Custom,
+        RunningWindow
     }
 
     public sealed class BrowserEntry
@@ -14,6 +15,7 @@ namespace LinkToBrowser.Models
         public string ExecutablePath { get; set; } = string.Empty;
         public string ArgumentsTemplate { get; set; } = string.Empty;
         public string ProgId { get; set; } = string.Empty;
+        public string UserDataDir { get; set; } = string.Empty;
         public BrowserKind Kind { get; set; } = BrowserKind.Registry;
 
         public static string MakeId(BrowserKind kind, string exe, string args)

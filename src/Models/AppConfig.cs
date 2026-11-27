@@ -7,7 +7,16 @@ namespace LinkToBrowser.Models
         NativePassthrough,
         DefaultBrowser,
         PickerPopup,
-        ClipboardOnly
+        ClipboardOnly,
+        RecentBrowser
+    }
+
+    public enum RecentFallbackMode
+    {
+        PickerPopup,
+        ClipboardOnly,
+        DefaultBrowser,
+        NativePassthrough
     }
 
     public enum ModifierKey
@@ -46,6 +55,8 @@ namespace LinkToBrowser.Models
         public bool ShowChromiumProfiles { get; set; } = true;
         public ThemeMode Theme { get; set; } = ThemeMode.System;
         public LanguageMode Language { get; set; } = LanguageMode.ZhCn;
+        public RecentFallbackMode RecentBrowserFallback { get; set; } = RecentFallbackMode.PickerPopup;
+        public bool EnableCdpForIsolatedBrowsers { get; set; } = true;
         public List<string> HiddenBrowserIds { get; set; } = new List<string>();
         public List<string> BrowserOrder { get; set; } = new List<string>();
         public List<BrowserEntry> CustomBrowsers { get; set; } = new List<BrowserEntry>();

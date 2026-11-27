@@ -27,6 +27,10 @@ namespace LinkToBrowser.Core
         private readonly Func<string, string> _resolveProgId;
         private readonly Func<ModifierKey, bool> _isKeyDown;
         private readonly Func<string, (bool ok, string exe, string args)> _splitCommand;
+        private readonly Func<RecentBrowserTarget> _findRecentBrowser;
+        private readonly Func<string, string, (bool ok, string err)> _openViaCdp;
+        private readonly Action<IntPtr> _activateWindow;
+        private readonly Func<string, IntPtr> _findWindowByUserDataDir;
 
         public LinkDispatcher(
             AppConfig cfg,
@@ -35,6 +39,21 @@ namespace LinkToBrowser.Core
             Func<string, string> resolveProgId,
             Func<ModifierKey, bool> isKeyDown,
             Func<string, (bool ok, string exe, string args)> splitCommand)
+            : this(cfg, launch, copy, resolveProgId, isKeyDown, splitCommand, null, null, null, null)
+        {
+        }
+
+        public LinkDispatcher(
+            AppConfig cfg,
+            Func<string, string, string, (bool ok, string err)> launch,
+            Func<string, bool> copy,
+            Func<string, string> resolveProgId,
+            Func<ModifierKey, bool> isKeyDown,
+            Func<string, (bool ok, string exe, string args)> splitCommand,
+            Func<RecentBrowserTarget> findRecentBrowser,
+            Func<string, string, (bool ok, string err)> openViaCdp,
+            Action<IntPtr> activateWindow,
+            Func<string, IntPtr> findWindowByUserDataDir = null)
         {
             _cfg = cfg ?? new AppConfig();
             _launch = launch;
@@ -42,6 +61,10 @@ namespace LinkToBrowser.Core
             _resolveProgId = resolveProgId;
             _isKeyDown = isKeyDown;
             _splitCommand = splitCommand;
+            _findRecentBrowser = findRecentBrowser;
+            _openViaCdp = openViaCdp;
+            _activateWindow = activateWindow;
+            _findWindowByUserDataDir = findWindowByUserDataDir;
         }
 
         public DispatchResult Dispatch(CliInvocation inv)
@@ -89,6 +112,62 @@ namespace LinkToBrowser.Core
                 GlobalMode.DefaultBrowser => HandleDefaultBrowser(url),
                 GlobalMode.PickerPopup => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url },
                 GlobalMode.ClipboardOnly => HandleClipboardOnly(url),
+                GlobalMode.RecentBrowser => HandleRecentBrowser(url),
+                _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
+            };
+        }
+
+        private DispatchResult HandleRecentBrowser(string url)
+        {
+            var target = _findRecentBrowser?.Invoke();
+            if (target == null || string.IsNullOrWhiteSpace(target.ExecutablePath))
+            {
+                return HandleRecentFallback(url);
+            }
+
+            if (_cfg.EnableCdpForIsolatedBrowsers &&
+                target.HasDevToolsActivePort &&
+                !string.IsNullOrWhiteSpace(target.UserDataDir) &&
+                _openViaCdp != null)
+            {
+                var (cdpOk, cdpErr) = _openViaCdp(target.UserDataDir, url);
+                if (cdpOk)
+                {
+                    try { _activateWindow?.Invoke(target.HWnd); } catch { }
+                    return new DispatchResult
+                    {
+                        Kind = DispatchKind.Done,
+                        ExitCode = 0,
+                        Url = url
+                    };
+                }
+
+                var copyOk = _copy(url);
+                return new DispatchResult
+                {
+                    Kind = DispatchKind.ShowClipboard,
+                    Url = url,
+                    CopyOk = copyOk,
+                    Warning = L.Format("S_WarnCdpFallback", cdpErr)
+                };
+            }
+
+            var res = LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url);
+            if (res.Kind == DispatchKind.Done && res.ExitCode == 0 && target.HWnd != IntPtr.Zero)
+            {
+                try { _activateWindow?.Invoke(target.HWnd); } catch { }
+            }
+
+            return res;
+        }
+
+        private DispatchResult HandleRecentFallback(string url)
+        {
+            return _cfg.RecentBrowserFallback switch
+            {
+                RecentFallbackMode.ClipboardOnly => HandleClipboardOnly(url),
+                RecentFallbackMode.DefaultBrowser => HandleDefaultBrowser(url),
+                RecentFallbackMode.NativePassthrough => HandleNativePassthrough(url),
                 _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
             };
         }
@@ -135,7 +214,7 @@ namespace LinkToBrowser.Core
         private DispatchResult HandleDefaultBrowser(string url)
         {
             var target = _cfg.DefaultBrowser;
-            if (target == null || string.IsNullOrWhiteSpace(target.ExecutablePath))
+            if (target == null || (string.IsNullOrWhiteSpace(target.ExecutablePath) && string.IsNullOrWhiteSpace(target.UserDataDir)))
             {
                 return new DispatchResult
                 {
@@ -143,6 +222,40 @@ namespace LinkToBrowser.Core
                     Url = url,
                     Warning = L.Get("S_WarnNoDefaultTarget")
                 };
+            }
+
+            if (_cfg.EnableCdpForIsolatedBrowsers &&
+                !string.IsNullOrWhiteSpace(target.UserDataDir) &&
+                _openViaCdp != null)
+            {
+                var (cdpOk, cdpErr) = _openViaCdp(target.UserDataDir, url);
+                if (cdpOk)
+                {
+                    var hwnd = _findWindowByUserDataDir?.Invoke(target.UserDataDir) ?? IntPtr.Zero;
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        try { _activateWindow?.Invoke(hwnd); } catch { }
+                    }
+
+                    return new DispatchResult
+                    {
+                        Kind = DispatchKind.Done,
+                        ExitCode = 0,
+                        Url = url
+                    };
+                }
+
+                if (target.Kind == BrowserKind.RunningWindow)
+                {
+                    var copyOk = _copy(url);
+                    return new DispatchResult
+                    {
+                        Kind = DispatchKind.ShowClipboard,
+                        Url = url,
+                        CopyOk = copyOk,
+                        Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, cdpErr)
+                    };
+                }
             }
 
             return LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url);

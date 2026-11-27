@@ -66,7 +66,7 @@ namespace LinkToBrowser.Views
                 WarningBar.IsOpen = true;
             }
 
-            _allVisible = BrowserCatalog.GetAll(_cfg, _selfExe, includeHidden: false);
+            _allVisible = BrowserCatalog.GetAllWithRunning(_cfg, _selfExe, includeHidden: false);
             RefreshList(string.Empty);
 
             Loaded += (_, _) =>
@@ -217,6 +217,43 @@ namespace LinkToBrowser.Views
 
         private void LaunchItem(BrowserEntry entry)
         {
+            if (_cfg.EnableCdpForIsolatedBrowsers &&
+                !string.IsNullOrWhiteSpace(entry.UserDataDir) &&
+                CdpClient.HasDevToolsActivePort(entry.UserDataDir))
+            {
+                if (CdpClient.TryOpenTab(entry.UserDataDir, _url, out var cdpErr))
+                {
+                    var hwnd = RecentBrowserService.FindWindowByUserDataDir(entry.UserDataDir, _selfExe);
+                    if (hwnd != IntPtr.Zero)
+                    {
+                        RecentBrowserService.ActivateWindow(hwnd);
+                    }
+
+                    _logService.LogLink(_url, true);
+                    Close();
+                    return;
+                }
+
+                if (entry.Kind == BrowserKind.RunningWindow)
+                {
+                    var clipOk = ClipboardService.CopyWithRetry(_url);
+                    _logService.LogLink(_url, clipOk, $"picker cdp failed: {cdpErr}");
+                    _onLaunchFailed?.Invoke(_url, cdpErr, clipOk);
+                    Close();
+                    return;
+                }
+            }
+
+            if (entry.Kind == BrowserKind.RunningWindow)
+            {
+                var clipOk = ClipboardService.CopyWithRetry(_url);
+                var msg = L.Format("S_WarnIsolatedNotRunning", entry.Name, "DevToolsActivePort unavailable");
+                _logService.LogLink(_url, clipOk, msg);
+                _onLaunchFailed?.Invoke(_url, msg, clipOk);
+                Close();
+                return;
+            }
+
             var launcher = new BrowserLauncher(_selfExe);
             if (launcher.TryLaunch(entry.ExecutablePath, entry.ArgumentsTemplate, _url, out var err))
             {
