@@ -43,14 +43,14 @@ namespace LinkToBrowser.Core
             // Global Mode
             ["S_GlobalModeHeader"] = "全局链接处理模式",
             ["S_ModeNativeTitle"] = "Windows 原生",
-            ["S_ModeNativeDesc"] = "静默转发给系统原默认浏览器，0 风险且随时可彻底恢复",
-            ["S_BtnRestoreDefault"] = "彻底交还…",
+            ["S_ModeNativeDesc"] = "静默转发给系统原默认浏览器，可随时切换回系统设置",
+            ["S_BtnRestoreDefault"] = "还原默认…",
             ["S_ModeDefaultTitle"] = "默认指定浏览器",
-            ["S_ModeDefaultDesc"] = "直接用下方指定的浏览器或自定义内核静默打开链接",
+            ["S_ModeDefaultDesc"] = "静默使用下方选定的浏览器或自定义可执行文件打开链接",
             ["S_ModePickerTitle"] = "弹出浏览器选择界面",
-            ["S_ModePickerDesc"] = "每次点击链接在光标附近弹出选择小窗，支持 1–9 快选与即时过滤",
+            ["S_ModePickerDesc"] = "点击链接时在光标附近弹出选择窗口，支持 1–9 快选与筛选",
             ["S_ModeClipboardTitle"] = "默认复制到剪贴板",
-            ["S_ModeClipboardDesc"] = "截断链接并写入剪贴板（3 秒重试与失败还原），适合配合指纹浏览器",
+            ["S_ModeClipboardDesc"] = "拦截链接并复制到剪贴板，按需弹出快捷确认窗口",
             ["S_SelectOriginalBrowser"] = "(请选择原系统默认浏览器...)",
 
             // Behavior & Appearance
@@ -82,7 +82,7 @@ namespace LinkToBrowser.Core
             ["S_LangSystem"] = "跟随系统",
 
             // Browsers Page
-            ["S_BrowsersDesc"] = "支持上下调整排序、隐藏不想在选择窗出现的程序，以及添加任意指纹浏览器内核或带参启动项。",
+            ["S_BrowsersDesc"] = "调整浏览器显示顺序、隐藏不需要的条目，或添加自定义可执行文件与启动参数。",
             ["S_Rescan"] = "重新扫描",
             ["S_AddCustom"] = "添加自定义浏览器",
             ["S_KindCustom"] = "自定义",
@@ -104,12 +104,12 @@ namespace LinkToBrowser.Core
             ["S_DiagLogTitle"] = "运行日志目录",
             ["S_BtnOpenDir"] = "打开目录",
             ["S_BtnClearLogs"] = "清空日志",
-            ["S_RestoreCardTitle"] = "彻底交还系统默认状态",
-            ["S_RestoreCardDesc"] = "打开 Windows 默认应用设置页选回原浏览器，并可安全清理 HKCU 注册项",
+            ["S_RestoreCardTitle"] = "还原系统默认浏览器",
+            ["S_RestoreCardDesc"] = "打开 Windows 默认应用设置页选回原浏览器，并可清理当前用户的注册表关联",
             ["S_BtnRestoreClean"] = "还原并清理注册...",
             ["S_BtnGitHubRepo"] = "GitHub 主页",
             ["S_BtnCheckUpdates"] = "检查更新 (Releases)",
-            ["S_AboutDesc"] = "免安装、0 风险、面向多浏览器与指纹浏览器的轻量 Windows 11 链接分流与剪贴板工具（MIT License）。",
+            ["S_AboutDesc"] = "轻量级 Windows 11 默认浏览器路由、选择器与剪贴板链接处理工具（MIT License）。",
             ["S_DiagText"] = "http UserChoice = {0}\nhttps UserChoice = {1}\nLinkToBrowser.URL 命令 -> {2}",
             ["S_NotRegistered"] = "(未注册)",
             ["S_Unset"] = "(未设置)",
@@ -120,10 +120,18 @@ namespace LinkToBrowser.Core
             ["S_RestoreHintNoTarget"] = "请在打开的「Windows 默认应用」设置中选回你常用的浏览器。",
             ["S_RestoreHintTarget"] = "建议在打开的「Windows 默认应用」设置中选回：{0}。",
             ["S_RestoreConfirmBody"] = "{0}\n\n是否同时清理 LinkToBrowser 在当前用户注册表 (HKCU) 下的注册项？\n\n选择「是」= 打开系统设置并清理注册项\n选择「否」= 仅打开系统设置，保留注册项\n选择「取消」= 暂不操作",
-            ["S_RestoreConfirmTitle"] = "彻底交还系统默认",
+            ["S_RestoreConfirmTitle"] = "还原系统默认设置",
             ["S_MsgTestFailed"] = "测试启动失败：{0}",
             ["S_MsgOpenConfigFailed"] = "打开配置文件失败：{0}",
             ["S_MsgLogsCleared"] = "已清空运行日志。",
+
+            // Dispatcher warnings
+            ["S_WarnNoOriginal"] = "未配置原系统默认浏览器，请从下方选择或前往设置指定。",
+            ["S_WarnNoCommand"] = "原默认浏览器 ({0}) 无命令行入口，请从下方选择。",
+            ["S_WarnInvalidCommand"] = "原默认浏览器 ({0}) 启动程序不可用，请从下方选择。",
+            ["S_WarnNoDefaultTarget"] = "尚未指定默认浏览器，请从下方选择。",
+            ["S_WarnLaunchFallback"] = "启动浏览器失败，已复制到剪贴板：{0}",
+            ["S_WarnClipBusy"] = "剪贴板被占用，复制失败：URL 已写入 links.log，请手动从下方复制。",
 
             // Picker Window
             ["S_PickerWindowTitle"] = "选择浏览器",
@@ -147,7 +155,7 @@ namespace LinkToBrowser.Core
             ["S_ClipClose"] = "关闭 (Esc)",
             ["S_ClipClosePaused"] = "关闭 (Esc) · 已暂停",
             ["S_ClipCloseCountdown"] = "关闭 (Esc) · {0}s",
-            ["S_ClipWarnTitle"] = "已复制到剪贴板（兜底提示）",
+            ["S_ClipWarnTitle"] = "已复制到剪贴板",
             ["S_ClipErrTitle"] = "操作失败",
             ["S_ClipOkTitle"] = "已复制到剪贴板",
             ["S_ClipOkMsg"] = "切换到目标浏览器按 Ctrl+V 即可粘贴打开。",
@@ -159,7 +167,7 @@ namespace LinkToBrowser.Core
             ["S_CustomWinTitle"] = "添加 / 编辑自定义浏览器",
             ["S_CustomTitleBar"] = "自定义浏览器 / 启动参数",
             ["S_CustomNameLabel"] = "显示名称",
-            ["S_CustomNameHint"] = "例如：比特浏览器内核 / Chrome 工作号",
+            ["S_CustomNameHint"] = "例如：Chrome 工作号 / Portable Browser",
             ["S_CustomExeLabel"] = "可执行文件路径 (.exe)",
             ["S_CustomExeHint"] = "选择或粘贴浏览器 .exe 路径",
             ["S_CustomBrowse"] = "浏览...",
@@ -210,14 +218,14 @@ namespace LinkToBrowser.Core
             // Global Mode
             ["S_GlobalModeHeader"] = "Global Link Routing Mode",
             ["S_ModeNativeTitle"] = "Windows Native",
-            ["S_ModeNativeDesc"] = "Silently forward to your original default browser; zero risk and fully reversible",
+            ["S_ModeNativeDesc"] = "Silently forward links to your previous default browser",
             ["S_BtnRestoreDefault"] = "Restore Default…",
             ["S_ModeDefaultTitle"] = "Specific Browser",
             ["S_ModeDefaultDesc"] = "Silently open links in the selected browser or custom executable below",
             ["S_ModePickerTitle"] = "Browser Picker Popup",
-            ["S_ModePickerDesc"] = "Show a quick picker near the cursor on every click, with 1–9 hotkeys and live filter",
+            ["S_ModePickerDesc"] = "Show a quick picker near the cursor on link click, with 1–9 hotkeys and live filter",
             ["S_ModeClipboardTitle"] = "Copy to Clipboard",
-            ["S_ModeClipboardDesc"] = "Intercept links and copy to clipboard (3s retry & fallback), ideal for fingerprint browsers",
+            ["S_ModeClipboardDesc"] = "Intercept links and copy them to the clipboard with an optional popup",
             ["S_SelectOriginalBrowser"] = "(Select original default browser...)",
 
             // Behavior & Appearance
@@ -249,7 +257,7 @@ namespace LinkToBrowser.Core
             ["S_LangSystem"] = "Follow System",
 
             // Browsers Page
-            ["S_BrowsersDesc"] = "Reorder browsers, hide unwanted entries from the picker, or add custom fingerprint browsers and launch arguments.",
+            ["S_BrowsersDesc"] = "Reorder browsers, hide unwanted entries from the picker, or add custom executables and launch arguments.",
             ["S_Rescan"] = "Rescan",
             ["S_AddCustom"] = "Add Custom Browser",
             ["S_KindCustom"] = "Custom",
@@ -276,7 +284,7 @@ namespace LinkToBrowser.Core
             ["S_BtnRestoreClean"] = "Restore & Clean...",
             ["S_BtnGitHubRepo"] = "GitHub Repo",
             ["S_BtnCheckUpdates"] = "Releases / Updates",
-            ["S_AboutDesc"] = "Portable, zero-risk Windows 11 URL router and clipboard tool built for multi-browser and fingerprint browser workflows (MIT License).",
+            ["S_AboutDesc"] = "A lightweight URL router, browser picker, and clipboard handler for Windows 11 (MIT License).",
             ["S_DiagText"] = "http UserChoice = {0}\nhttps UserChoice = {1}\nLinkToBrowser.URL command -> {2}",
             ["S_NotRegistered"] = "(Not registered)",
             ["S_Unset"] = "(Unset)",
@@ -291,6 +299,14 @@ namespace LinkToBrowser.Core
             ["S_MsgTestFailed"] = "Test launch failed: {0}",
             ["S_MsgOpenConfigFailed"] = "Failed to open config file: {0}",
             ["S_MsgLogsCleared"] = "Logs cleared.",
+
+            // Dispatcher warnings
+            ["S_WarnNoOriginal"] = "Original default browser is not configured. Please choose one below or set it in Settings.",
+            ["S_WarnNoCommand"] = "Original default browser ({0}) has no launch command. Please choose below.",
+            ["S_WarnInvalidCommand"] = "Original default browser ({0}) executable is unavailable. Please choose below.",
+            ["S_WarnNoDefaultTarget"] = "No default browser is selected. Please choose one below.",
+            ["S_WarnLaunchFallback"] = "Failed to launch browser; copied URL to clipboard: {0}",
+            ["S_WarnClipBusy"] = "Clipboard is busy; copy failed. URL was saved to links.log; please copy manually below.",
 
             // Picker Window
             ["S_PickerWindowTitle"] = "Choose Browser",
@@ -314,7 +330,7 @@ namespace LinkToBrowser.Core
             ["S_ClipClose"] = "Close (Esc)",
             ["S_ClipClosePaused"] = "Close (Esc) · Paused",
             ["S_ClipCloseCountdown"] = "Close (Esc) · {0}s",
-            ["S_ClipWarnTitle"] = "Copied to clipboard (fallback)",
+            ["S_ClipWarnTitle"] = "Copied to clipboard",
             ["S_ClipErrTitle"] = "Action failed",
             ["S_ClipOkTitle"] = "Copied to clipboard",
             ["S_ClipOkMsg"] = "Switch to your target browser and press Ctrl+V to open.",
@@ -326,7 +342,7 @@ namespace LinkToBrowser.Core
             ["S_CustomWinTitle"] = "Add / Edit Custom Browser",
             ["S_CustomTitleBar"] = "Custom Browser / Launch Arguments",
             ["S_CustomNameLabel"] = "Display Name",
-            ["S_CustomNameHint"] = "e.g. BitBrowser Kernel / Chrome Work",
+            ["S_CustomNameHint"] = "e.g. Chrome Work / Portable Browser",
             ["S_CustomExeLabel"] = "Executable Path (.exe)",
             ["S_CustomExeHint"] = "Select or paste browser .exe path",
             ["S_CustomBrowse"] = "Browse...",

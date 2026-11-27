@@ -2,8 +2,8 @@
   <img src="src/Assets/LinkToBrowser.svg" width="96" height="96" alt="LinkToBrowser Logo" />
   <h1>LinkToBrowser</h1>
   <p>
-    <strong>A lightweight, portable, zero-risk Windows 11 URL router, browser picker, and clipboard link handler</strong><br/>
-    <sub>Built for multi-browser workflows, Chromium multi-profiles, and antidetect/fingerprint browsers</sub>
+    <strong>A lightweight Windows 11 URL router, browser picker, and clipboard link handler</strong><br/>
+    <sub>Switch effortlessly between browsers, user profiles, and clipboard workflows when opening links</sub>
   </p>
   <p>
     <a href="README.md">简体中文</a> | <strong>English</strong>
@@ -14,54 +14,54 @@
 
 ---
 
-## Key Features
+## Features
 
-- **100% Portable & Zero Runtime Dependencies**
-  - Built on Windows 11's inbox `.NET Framework 4.8` and `WPF-UI`. Extract `LinkToBrowser-portable.zip` and run immediately—no extra runtimes or installers required.
-  - `config.json` and logs (`logs\links.log`, `logs\args.log`) live right inside the app folder (falling back to `%LOCALAPPDATA%\LinkToBrowser` only when placed in read-only system paths). Exits cleanly when closed with zero background resident processes.
-- **Four Global Link Routing Modes**
-  1. **Windows Native**: Silently forwards URLs to your original default browser recorded prior to activation—zero risk and reversible anytime.
-  2. **Specific Browser**: Silently launches links in any selected installed browser or custom `.exe` + argument template.
-  3. **Browser Picker Popup**: Opens a compact picker near your cursor on link click, supporting `1–9` digit hotkeys, instant search filtering, `↑/↓` + `Enter` launch, and `Ctrl+C` copy.
-  4. **Copy to Clipboard**: Intercepts URLs and writes them to the clipboard (with 3-second busy retry and fallback restoration), paired with an optional auto-closing confirmation popup (pauses on hover/focus) and one-click "Open in Browser".
-- **Multi-Profile & Antidetect Browser Friendly**
-  - Automatically discovers Windows-registered browsers (filtering out fake media-player associations) and Chromium user profiles, plus supports custom portable/fingerprint browser executables with `{url}` launch templates.
-  - Hold a configurable modifier key (`Alt` or `Shift`) while clicking a link to temporarily summon the picker from any silent mode.
-- **Safe `HKCU`-Only Registration**
-  - Requires no Administrator privileges and never writes protected Windows `UserChoice` hashes. One-click restore opens Windows Default Apps and cleanly removes all `HKCU` entries.
-- **Bilingual UI & Adaptive Theme**: Instant runtime switching between **English**, **简体中文**, and **Follow System**, with Windows 11 Light/Dark/Mica support.
+- **Portable & Ready to Use**
+  - Runs on Windows 11's inbox `.NET Framework 4.8` runtime—just extract and run with no installer or extra dependencies.
+  - Stores `config.json` and `logs\` next to the executable (falling back to `%LOCALAPPDATA%\LinkToBrowser` in read-only directories).
+- **Four Link Routing Modes**
+  1. **Windows Native**: Silently forwards links to your previously configured default browser.
+  2. **Specific Browser**: Silently opens links using a selected browser or custom executable and arguments.
+  3. **Browser Picker Popup**: Displays a compact picker near the cursor with `1–9` quick-launch keys, live search filtering, `↑/↓` + `Enter`, and `Ctrl+C` copy.
+  4. **Copy to Clipboard**: Copies links directly to the clipboard with an optional auto-closing confirmation popup (pauses on hover or input focus).
+- **Multi-Profile & Custom Launchers**
+  - Automatically discovers installed browsers and Chromium user profiles (Chrome / Edge), plus lets you add custom `.exe` paths with `{url}` templates.
+  - Configure a modifier key (`Alt` or `Shift`) to temporarily bring up the picker on click while in any silent mode.
+- **Per-User (`HKCU`) Registration**
+  - Requires no administrator privileges and leaves system-protected defaults untouched until you select it in Windows Default Apps. Cleanly removable anytime.
+- **Bilingual UI & Adaptive Theme**
+  - Instant switching between **English**, **简体中文**, and **Follow System**, with Light, Dark, and Windows 11 Mica theme support.
 
 ---
 
 ## Screenshots
 
-| Settings Window (General / Routing Modes) | Browser Picker Popup (Light / English) |
+| Settings Window | Browser Picker Popup |
 | :---: | :---: |
-| ![Settings Window](docs/screenshots/settings-zh.png) | ![Picker Window](docs/screenshots/picker-en.png) |
+| ![Settings Window](docs/screenshots/settings-en.png) | ![Picker Window](docs/screenshots/picker-en.png) |
 
-| Clipboard Confirmation Popup (Dark Mode / Countdown) |
+| Clipboard Confirmation Popup |
 | :---: |
-| ![Clipboard Popup](docs/screenshots/clipboard-dark.png) |
+| ![Clipboard Popup](docs/screenshots/clipboard-en.png) |
 
 ---
 
 ## Quick Start
 
-1. Download the latest `LinkToBrowser-portable.zip` from [Releases](https://github.com/D-ruihao/LinkToBrowser/releases) and extract it to a permanent folder (e.g., `C:\Tools\LinkToBrowser\`).
-2. Run `LinkToBrowser.exe` to open Settings (you can switch **Language** to **English** under Behavior & Appearance).
-3. Click **Register Now** (or run `LinkToBrowser.exe --register`—no admin needed), then click **Open Default Apps** and set `LinkToBrowser` as the default handler for `HTTP` / `HTTPS`.
+1. Download `LinkToBrowser-portable.zip` from [Releases](https://github.com/D-ruihao/LinkToBrowser/releases) and extract it to a permanent folder (e.g. `C:\Tools\LinkToBrowser\`).
+2. Run `LinkToBrowser.exe` to open Settings.
+3. Click **Register Now** (or pass `--register`), then click **Open Default Apps** and set `LinkToBrowser` as your default for `HTTP` / `HTTPS`.
 
-### CLI Flags
+### CLI Arguments
 
-- *(no args)* or `--settings`: Single-instance open Settings window
-- `--register`: Register current `LinkToBrowser.exe` in `HKCU` and snapshot your previous default browser `ProgId`
+- *(no args)* or `--settings`: Open Settings
+- `--register`: Register `LinkToBrowser.exe` under `HKCU` and snapshot your previous default `ProgId`
 - `--unregister`: Remove `LinkToBrowser` entries from `HKCU`
-- `--no-ui <url>`: Copy URL silently to clipboard (`0` on success, `2` on failure)
-- `-Embedding` / `--version`: Exit silently without modifying the clipboard
+- `--no-ui <url>`: Silently copy URL to clipboard (`0` on success, `2` on failure)
 
-### Clean Restore & Uninstall
+### Restore & Uninstall
 
-Click **Restore Default…** in Settings (or run `LinkToBrowser.exe --unregister` and open Windows Default Apps), switch `http`/`https` back to your browser, confirm HKCU cleanup, and delete the folder.
+Click **Restore Default…** in Settings (or run `LinkToBrowser.exe --unregister` and open Windows Default Apps), select your previous browser, clean up HKCU entries, and remove the folder.
 
 ---
 
@@ -73,7 +73,7 @@ Requires Windows 11 and .NET SDK (.NET 7+ SDK).
 powershell -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-This runs all unit tests (`dotnet test`), builds the Release portable folder `dist\LinkToBrowser\`, and packages `dist\LinkToBrowser-portable.zip`.
+Outputs `dist\LinkToBrowser\` and `dist\LinkToBrowser-portable.zip`.
 
 ## License
 

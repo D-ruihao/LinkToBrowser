@@ -77,6 +77,7 @@ namespace LinkToBrowser
                     }
 
                     var cfg = configService.Load();
+                    L.Apply(cfg.Language);
                     var launcher = new BrowserLauncher(selfExe);
                     var dispatcher = new LinkDispatcher(
                         cfg,

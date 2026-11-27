@@ -103,7 +103,7 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = "未配置原系统默认浏览器，请从下方选择或前往设置指定。"
+                    Warning = L.Get("S_WarnNoOriginal")
                 };
             }
 
@@ -114,7 +114,7 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = $"原默认浏览器 ({progId}) 无命令行入口，请从下方选择。"
+                    Warning = L.Format("S_WarnNoCommand", progId)
                 };
             }
 
@@ -125,7 +125,7 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = $"原默认浏览器 ({progId}) 启动程序不可用，请从下方选择。"
+                    Warning = L.Format("S_WarnInvalidCommand", progId)
                 };
             }
 
@@ -141,7 +141,7 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = "尚未指定默认浏览器，请从下方选择。"
+                    Warning = L.Get("S_WarnNoDefaultTarget")
                 };
             }
 
@@ -167,7 +167,7 @@ namespace LinkToBrowser.Core
                 Kind = DispatchKind.ShowClipboard,
                 Url = url,
                 CopyOk = copyOk,
-                Warning = $"启动浏览器失败，已尝试复制到剪贴板兜底：{err}"
+                Warning = L.Format("S_WarnLaunchFallback", err)
             };
         }
 
@@ -190,7 +190,7 @@ namespace LinkToBrowser.Core
                 Kind = DispatchKind.ShowClipboard,
                 Url = url,
                 CopyOk = copyOk,
-                Warning = copyOk ? string.Empty : "剪贴板被占用，复制失败：URL 已写入 links.log，请手动从下方复制。"
+                Warning = copyOk ? string.Empty : L.Get("S_WarnClipBusy")
             };
         }
     }
