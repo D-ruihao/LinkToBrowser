@@ -3,6 +3,7 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  Title="LinkToBrowser"
+                 Icon="pack://application:,,,/LinkToBrowser;component/src/Assets/LinkToBrowser.ico"
                  Width="640"
                  SizeToContent="Height"
                  ResizeMode="NoResize"
@@ -19,7 +20,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="LinkToBrowser · 链接已捕获" ShowMaximize="False" ShowMinimize="False" Height="36" />
+        <ui:TitleBar Grid.Row="0"
+                     Title="{DynamicResource S_ClipTitleBar}"
+                     Icon="{ui:ImageIcon 'pack://application:,,,/LinkToBrowser;component/src/Assets/LinkToBrowser.png'}"
+                     ShowMaximize="False"
+                     ShowMinimize="False"
+                     Height="36" />
 
         <StackPanel Grid.Row="1" Margin="16,4,16,16">
             <ui:InfoBar x:Name="StatusBar" IsOpen="True" IsClosable="False" Margin="0,0,0,10" />
@@ -42,19 +48,19 @@
                 </Grid.ColumnDefinitions>
 
                 <ui:Button Grid.Column="0"
-                           Content="再复制一次"
+                           Content="{DynamicResource S_ClipCopyAgain}"
                            Icon="{ui:SymbolIcon Copy20}"
                            Appearance="Primary"
                            Margin="0,0,8,0"
                            Click="CopyAgain_Click" />
                 <ui:Button Grid.Column="1"
-                           Content="用浏览器打开"
+                           Content="{DynamicResource S_ClipOpenBrowser}"
                            Icon="{ui:SymbolIcon Globe20}"
                            Appearance="Secondary"
                            Margin="0,0,8,0"
                            Click="OpenInBrowser_Click" />
                 <ui:Button Grid.Column="2"
-                           Content="日志目录"
+                           Content="{DynamicResource S_ClipLogs}"
                            Icon="{ui:SymbolIcon FolderOpen20}"
                            Appearance="Secondary"
                            Click="OpenLogs_Click" />
@@ -62,12 +68,12 @@
                 <ui:Button Grid.Column="4"
                            Icon="{ui:SymbolIcon Settings20}"
                            Appearance="Transparent"
-                           ToolTip="打开设置"
+                           ToolTip="{DynamicResource S_ClipSettingsTip}"
                            Margin="0,0,6,0"
                            Click="OpenSettings_Click" />
                 <ui:Button x:Name="CloseBtn"
                            Grid.Column="5"
-                           Content="关闭 (Esc)"
+                           Content="{DynamicResource S_ClipClose}"
                            Click="Close_Click" />
             </Grid>
         </StackPanel>

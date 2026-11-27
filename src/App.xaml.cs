@@ -22,6 +22,7 @@ namespace LinkToBrowser
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
             var cfg = configService.Load();
+            L.Apply(cfg.Language);
 
             if (dispatchResult == null)
             {

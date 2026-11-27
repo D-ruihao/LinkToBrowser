@@ -64,8 +64,10 @@ namespace LinkToBrowser.Views
             _onOpenPicker = onOpenPicker;
             _onOpenSettings = onOpenSettings;
 
+            var effectiveCfg = cfg ?? new AppConfig();
+            L.Apply(effectiveCfg.Language, this);
             InitializeComponent();
-            UiHelpers.ApplyTheme(this, (cfg ?? new AppConfig()).Theme);
+            UiHelpers.ApplyTheme(this, effectiveCfg.Theme);
 
             UrlBox.Text = _url;
             ApplyStatus(dispatchResult.CopyOk, dispatchResult.Warning);
@@ -99,7 +101,7 @@ namespace LinkToBrowser.Views
             if (!string.IsNullOrWhiteSpace(warning))
             {
                 StatusBar.Severity = copyOk ? InfoBarSeverity.Warning : InfoBarSeverity.Error;
-                StatusBar.Title = copyOk ? "已复制到剪贴板（兜底提示）" : "操作失败";
+                StatusBar.Title = L.Get(copyOk ? "S_ClipWarnTitle" : "S_ClipErrTitle");
                 StatusBar.Message = warning;
                 return;
             }
@@ -107,14 +109,14 @@ namespace LinkToBrowser.Views
             if (copyOk)
             {
                 StatusBar.Severity = InfoBarSeverity.Success;
-                StatusBar.Title = "已复制到剪贴板";
-                StatusBar.Message = "切换到目标浏览器按 Ctrl+V 即可粘贴打开。";
+                StatusBar.Title = L.Get("S_ClipOkTitle");
+                StatusBar.Message = L.Get("S_ClipOkMsg");
             }
             else
             {
                 StatusBar.Severity = InfoBarSeverity.Error;
-                StatusBar.Title = "剪贴板被占用，复制失败";
-                StatusBar.Message = "URL 已写入 links.log，请从下方文本框手动复制。";
+                StatusBar.Title = L.Get("S_ClipFailTitle");
+                StatusBar.Message = L.Get("S_ClipFailMsg");
             }
         }
 
@@ -134,13 +136,13 @@ namespace LinkToBrowser.Views
         {
             if (!_tracker.IsEnabled)
             {
-                CloseBtn.Content = "关闭 (Esc)";
+                CloseBtn.Content = L.Get("S_ClipClose");
                 return;
             }
 
             CloseBtn.Content = _tracker.IsPaused
-                ? "关闭 (Esc) · 已暂停"
-                : $"关闭 (Esc) · {_tracker.RemainingSeconds}s";
+                ? L.Get("S_ClipClosePaused")
+                : L.Format("S_ClipCloseCountdown", _tracker.RemainingSeconds);
         }
 
         private void Window_MouseEnter(object sender, MouseEventArgs e)
@@ -198,7 +200,7 @@ namespace LinkToBrowser.Views
                 _tracker.Disable();
                 UpdateCloseButtonText();
             }
-            ApplyStatus(ok, ok ? string.Empty : "仍然失败，请手动选中文本框复制。");
+            ApplyStatus(ok, ok ? string.Empty : L.Get("S_ClipRetryFailMsg"));
         }
 
         private void OpenInBrowser_Click(object sender, RoutedEventArgs e)

@@ -136,7 +136,9 @@ namespace LinkToBrowser.Core
         private static string UnwrapOuterQuotes(string value)
         {
             var s = value.Trim();
-            while (s.Length >= 2 && s[0] == '"' && s[s.Length - 1] == '"')
+            while (s.Length >= 2 &&
+                   ((s[0] == '"' && s[s.Length - 1] == '"') ||
+                    (s[0] == '\'' && s[s.Length - 1] == '\'')))
             {
                 s = s.Substring(1, s.Length - 2).Trim();
             }

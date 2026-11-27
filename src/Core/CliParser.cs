@@ -63,6 +63,14 @@ namespace LinkToBrowser.Core
                 {
                     unregister = true;
                 }
+                else if (trimmed.StartsWith("--url=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var val = raw.Substring(raw.IndexOf('=') + 1);
+                    if (!string.IsNullOrWhiteSpace(val))
+                    {
+                        parts.Add(val);
+                    }
+                }
                 else if (trimmed.StartsWith("-", StringComparison.Ordinal))
                 {
                     continue;

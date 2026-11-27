@@ -24,6 +24,13 @@ namespace LinkToBrowser.Models
         Light
     }
 
+    public enum LanguageMode
+    {
+        ZhCn,
+        EnUs,
+        System
+    }
+
     public sealed class AppConfig
     {
         public const string DefaultOriginalProgId = "MSEdgeHTM";
@@ -38,6 +45,7 @@ namespace LinkToBrowser.Models
         public bool StripTrackingParams { get; set; }
         public bool ShowChromiumProfiles { get; set; } = true;
         public ThemeMode Theme { get; set; } = ThemeMode.System;
+        public LanguageMode Language { get; set; } = LanguageMode.ZhCn;
         public List<string> HiddenBrowserIds { get; set; } = new List<string>();
         public List<string> BrowserOrder { get; set; } = new List<string>();
         public List<BrowserEntry> CustomBrowsers { get; set; } = new List<BrowserEntry>();

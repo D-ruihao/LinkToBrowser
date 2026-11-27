@@ -42,14 +42,14 @@ namespace LinkToBrowser.Views
             public string Name => Entry.Name;
             public string KindLabel => Entry.Kind switch
             {
-                BrowserKind.Custom => "自定义",
-                BrowserKind.ChromiumProfile => "多配置",
-                _ => "系统识别"
+                BrowserKind.Custom => L.Get("S_KindCustom"),
+                BrowserKind.ChromiumProfile => L.Get("S_KindProfile"),
+                _ => L.Get("S_KindSystem")
             };
             public string CommandPreview => string.IsNullOrWhiteSpace(Entry.ArgumentsTemplate)
                 ? Entry.ExecutablePath
                 : $"{Entry.ExecutablePath}  {Entry.ArgumentsTemplate}";
-            public string VisibilityButtonText => IsHidden ? "已隐藏" : "显示中";
+            public string VisibilityButtonText => IsHidden ? L.Get("S_StatusHidden") : L.Get("S_StatusVisible");
             public Visibility CustomActionVisibility => Entry.Kind == BrowserKind.Custom ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -62,6 +62,7 @@ namespace LinkToBrowser.Views
         private AppConfig _cfg;
         private List<BrowserEntry> _allBrowsers = new List<BrowserEntry>();
         private bool _isLoadingUi;
+        private string _currentPage = "General";
 
         public SettingsWindow(
             ConfigService configService,
@@ -74,7 +75,20 @@ namespace LinkToBrowser.Views
             _registration = registration;
             _selfExe = selfExe;
 
+            _cfg = _configService.Load();
+            if (_registration.TrySnapshot(_cfg))
+            {
+                _configService.Save(_cfg);
+            }
+
+            L.Apply(_cfg.Language, this);
             InitializeComponent();
+
+            var ver = typeof(SettingsWindow).Assembly.GetName().Version;
+            if (ver != null)
+            {
+                AboutVersionText.Text = $"LinkToBrowser v{ver.Major}.{ver.Minor}.{ver.Build}";
+            }
 
             _savedBadgeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.8) };
             _savedBadgeTimer.Tick += (_, _) =>
@@ -82,12 +96,6 @@ namespace LinkToBrowser.Views
                 SavedBadgeText.Opacity = 0;
                 _savedBadgeTimer.Stop();
             };
-
-            _cfg = _configService.Load();
-            if (_registration.TrySnapshot(_cfg))
-            {
-                _configService.Save(_cfg);
-            }
 
             PopulateStaticCombos();
             UiHelpers.ApplyTheme(this, _cfg.Theme);
@@ -101,28 +109,44 @@ namespace LinkToBrowser.Views
 
         private void PopulateStaticCombos()
         {
-            AutoCloseCombo.ItemsSource = new[]
+            var prevLoading = _isLoadingUi;
+            _isLoadingUi = true;
+            try
             {
-                new ComboItem<int> { Value = 0, Label = "0 秒（不自动关闭）" },
-                new ComboItem<int> { Value = 3, Label = "3 秒" },
-                new ComboItem<int> { Value = 5, Label = "5 秒" },
-                new ComboItem<int> { Value = 8, Label = "8 秒" },
-                new ComboItem<int> { Value = 15, Label = "15 秒" }
-            };
+                AutoCloseCombo.ItemsSource = new[]
+                {
+                    new ComboItem<int> { Value = 0, Label = L.Get("S_AutoClose0") },
+                    new ComboItem<int> { Value = 3, Label = L.Format("S_AutoCloseN", 3) },
+                    new ComboItem<int> { Value = 5, Label = L.Format("S_AutoCloseN", 5) },
+                    new ComboItem<int> { Value = 8, Label = L.Format("S_AutoCloseN", 8) },
+                    new ComboItem<int> { Value = 15, Label = L.Format("S_AutoCloseN", 15) }
+                };
 
-            ModifierCombo.ItemsSource = new[]
-            {
-                new ComboItem<ModifierKey> { Value = ModifierKey.None, Label = "关闭" },
-                new ComboItem<ModifierKey> { Value = ModifierKey.Alt, Label = "按住 Alt 键" },
-                new ComboItem<ModifierKey> { Value = ModifierKey.Shift, Label = "按住 Shift 键" }
-            };
+                ModifierCombo.ItemsSource = new[]
+                {
+                    new ComboItem<ModifierKey> { Value = ModifierKey.None, Label = L.Get("S_ModNone") },
+                    new ComboItem<ModifierKey> { Value = ModifierKey.Alt, Label = L.Get("S_ModAlt") },
+                    new ComboItem<ModifierKey> { Value = ModifierKey.Shift, Label = L.Get("S_ModShift") }
+                };
 
-            ThemeCombo.ItemsSource = new[]
+                ThemeCombo.ItemsSource = new[]
+                {
+                    new ComboItem<ThemeMode> { Value = ThemeMode.System, Label = L.Get("S_ThemeSystem") },
+                    new ComboItem<ThemeMode> { Value = ThemeMode.Dark, Label = L.Get("S_ThemeDark") },
+                    new ComboItem<ThemeMode> { Value = ThemeMode.Light, Label = L.Get("S_ThemeLight") }
+                };
+
+                LanguageCombo.ItemsSource = new[]
+                {
+                    new ComboItem<LanguageMode> { Value = LanguageMode.ZhCn, Label = L.Get("S_LangZhCn") },
+                    new ComboItem<LanguageMode> { Value = LanguageMode.EnUs, Label = L.Get("S_LangEnUs") },
+                    new ComboItem<LanguageMode> { Value = LanguageMode.System, Label = L.Get("S_LangSystem") }
+                };
+            }
+            finally
             {
-                new ComboItem<ThemeMode> { Value = ThemeMode.System, Label = "跟随系统" },
-                new ComboItem<ThemeMode> { Value = ThemeMode.Dark, Label = "深色" },
-                new ComboItem<ThemeMode> { Value = ThemeMode.Light, Label = "浅色" }
-            };
+                _isLoadingUi = prevLoading;
+            }
         }
 
         private void RefreshAllState()
@@ -152,8 +176,8 @@ namespace LinkToBrowser.Views
             var isDef = _registration.IsSystemDefault();
 
             RegPathSubtitle.Text = isReg
-                ? $"当前注册命令：{regCmd}"
-                : $"尚未在当前用户 (HKCU) 注册：{ _selfExe }";
+                ? L.Format("S_RegSubCurrent", regCmd)
+                : L.Format("S_RegSubNotReg", _selfExe);
 
             var banner = EvaluateRegistrationBanner(isDef, isReg, pathOk, httpProg, httpsProg);
             RegStatusBar.Severity = banner.Severity;
@@ -174,9 +198,9 @@ namespace LinkToBrowser.Views
             {
                 return (
                     InfoBarSeverity.Success,
-                    "已接管系统 http / https 默认链接",
-                    "LinkToBrowser 正在正常运行，下方选择的模式将立即生效。",
-                    "更新注册路径",
+                    L.Get("S_BannerOkTitle"),
+                    L.Get("S_BannerOkMsg"),
+                    L.Get("S_RegBtnUpdatePath"),
                     ControlAppearance.Secondary);
             }
 
@@ -184,9 +208,9 @@ namespace LinkToBrowser.Views
             {
                 return (
                     InfoBarSeverity.Warning,
-                    "已设为默认，但注册路径指向了其它位置",
-                    "你移动或新部署了 LinkToBrowser.exe，建议点击右侧「更新注册路径」。",
-                    "更新注册路径",
+                    L.Get("S_BannerMovedTitle"),
+                    L.Get("S_BannerMovedMsg"),
+                    L.Get("S_RegBtnUpdatePath"),
                     ControlAppearance.Primary);
             }
 
@@ -194,9 +218,9 @@ namespace LinkToBrowser.Views
             {
                 return (
                     InfoBarSeverity.Warning,
-                    "已清理 LinkToBrowser 注册项，但系统默认尚未改回",
-                    "请在打开的「Windows 默认应用」里把常用浏览器（如 Chrome / Edge）设为 http 和 https 默认，才算完成交还。",
-                    "立即注册",
+                    L.Get("S_BannerPendingTitle"),
+                    L.Get("S_BannerPendingMsg"),
+                    L.Get("S_RegBtnRegister"),
                     ControlAppearance.Secondary);
             }
 
@@ -204,17 +228,17 @@ namespace LinkToBrowser.Views
             {
                 return (
                     InfoBarSeverity.Informational,
-                    "已完成注册，尚未设为系统默认应用",
-                    $"当前默认：http={httpProg}，https={httpsProg}。点击右侧「打开默认应用设置」搜索 LinkToBrowser 设为默认。",
-                    "更新注册路径",
+                    L.Get("S_BannerRegOnlyTitle"),
+                    L.Format("S_BannerRegOnlyMsg", httpProg, httpsProg),
+                    L.Get("S_RegBtnUpdatePath"),
                     ControlAppearance.Secondary);
             }
 
             return (
                 InfoBarSeverity.Warning,
-                "尚未注册到 Windows 默认应用列表",
-                "请先点击「立即注册」（无需管理员权限），再到系统设置里设为默认。",
-                "立即注册",
+                L.Get("S_BannerUnregTitle"),
+                L.Get("S_BannerUnregMsg"),
+                L.Get("S_RegBtnRegister"),
                 ControlAppearance.Primary);
         }
 
@@ -258,6 +282,7 @@ namespace LinkToBrowser.Views
             SelectComboItem(AutoCloseCombo, _cfg.ClipboardAutoCloseSeconds, 0);
             SelectComboItem(ModifierCombo, _cfg.Modifier, ModifierKey.None);
             SelectComboItem(ThemeCombo, _cfg.Theme, ThemeMode.System);
+            SelectComboItem(LanguageCombo, _cfg.Language, LanguageMode.ZhCn);
         }
 
         public static (List<ProgIdChoice> Choices, int SelectedIndex) BuildProgIdChoices(
@@ -272,7 +297,7 @@ namespace LinkToBrowser.Views
 
             if (!hasConfigured)
             {
-                choices.Add(new ProgIdChoice { ProgId = string.Empty, Display = "(请选择原系统默认浏览器...)" });
+                choices.Add(new ProgIdChoice { ProgId = string.Empty, Display = L.Get("S_SelectOriginalBrowser") });
             }
 
             foreach (var b in list)
@@ -333,10 +358,11 @@ namespace LinkToBrowser.Views
             var httpProg = _registration.GetUserChoice("http");
             var httpsProg = _registration.GetUserChoice("https");
             var cmd = _registration.GetRegisteredCommand();
-            DiagAssocText.Text =
-                $"http -> {(string.IsNullOrEmpty(httpProg) ? "(未设置)" : httpProg)}   |   " +
-                $"https -> {(string.IsNullOrEmpty(httpsProg) ? "(未设置)" : httpsProg)}\n" +
-                $"LinkToBrowser.URL 命令 -> {(string.IsNullOrEmpty(cmd) ? "(未注册)" : cmd)}";
+            DiagAssocText.Text = L.Format(
+                "S_DiagText",
+                string.IsNullOrEmpty(httpProg) ? L.Get("S_Unset") : httpProg,
+                string.IsNullOrEmpty(httpsProg) ? L.Get("S_Unset") : httpsProg,
+                string.IsNullOrEmpty(cmd) ? L.Get("S_NotRegistered") : cmd);
             DiagConfigPathText.Text = _configService.ConfigPath;
             DiagLogDirText.Text = _logService.LogDir;
         }
@@ -351,6 +377,7 @@ namespace LinkToBrowser.Views
 
         private void SwitchPage(string page)
         {
+            _currentPage = page;
             GeneralPage.Visibility = page == "General" ? Visibility.Visible : Visibility.Collapsed;
             BrowsersPage.Visibility = page == "Browsers" ? Visibility.Visible : Visibility.Collapsed;
             AboutPage.Visibility = page == "About" ? Visibility.Visible : Visibility.Collapsed;
@@ -361,9 +388,9 @@ namespace LinkToBrowser.Views
 
             PageTitleText.Text = page switch
             {
-                "Browsers" => "浏览器管理",
-                "About" => "关于与诊断",
-                _ => "常规"
+                "Browsers" => L.Get("S_NavBrowsers"),
+                "About" => L.Get("S_NavAbout"),
+                _ => L.Get("S_NavGeneral")
             };
         }
 
@@ -489,6 +516,17 @@ namespace LinkToBrowser.Views
             SaveAndFlash();
         }
 
+        private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isLoadingUi || LanguageCombo.SelectedItem is not ComboItem<LanguageMode> item) return;
+            _cfg.Language = item.Value;
+            L.Apply(_cfg.Language, this);
+            PopulateStaticCombos();
+            RefreshAllState();
+            SwitchPage(_currentPage);
+            SaveAndFlash();
+        }
+
         private void Register_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -504,7 +542,7 @@ namespace LinkToBrowser.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"注册失败：{ex.Message}", "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, L.Format("S_MsgRegFailed", ex.Message), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -516,7 +554,7 @@ namespace LinkToBrowser.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"无法打开默认应用设置：{ex.Message}", "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.Format("S_MsgOpenDefaultFailed", ex.Message), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -528,13 +566,13 @@ namespace LinkToBrowser.Views
                 ? $"{matched.Name} ({_cfg.OriginalDefaultProgId})"
                 : _cfg.OriginalDefaultProgId;
             var hint = string.IsNullOrWhiteSpace(_cfg.OriginalDefaultProgId)
-                ? "请在打开的「Windows 默认应用」设置中选回你常用的浏览器。"
-                : $"建议在打开的「Windows 默认应用」设置中选回：{targetLabel}。";
+                ? L.Get("S_RestoreHintNoTarget")
+                : L.Format("S_RestoreHintTarget", targetLabel);
 
             var res = MessageBox.Show(
                 this,
-                hint + "\n\n是否同时清理 LinkToBrowser 在当前用户注册表 (HKCU) 下的注册项？\n\n选择「是」= 打开系统设置并清理注册项\n选择「否」= 仅打开系统设置，保留注册项\n选择「取消」= 暂不操作",
-                "彻底交还系统默认",
+                L.Format("S_RestoreConfirmBody", hint),
+                L.Get("S_RestoreConfirmTitle"),
                 MessageBoxButton.YesNoCancel,
                 MessageBoxImage.Question);
 
@@ -609,7 +647,7 @@ namespace LinkToBrowser.Views
             var launcher = new BrowserLauncher(_selfExe);
             if (!launcher.TryLaunch(vm.Entry.ExecutablePath, vm.Entry.ArgumentsTemplate, "https://example.com", out var err))
             {
-                MessageBox.Show(this, $"测试启动失败：{err}", "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.Format("S_MsgTestFailed", err), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -672,7 +710,7 @@ namespace LinkToBrowser.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, $"打开配置文件失败：{ex.Message}", "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.Format("S_MsgOpenConfigFailed", ex.Message), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -690,13 +728,28 @@ namespace LinkToBrowser.Views
         private void ClearLogs_Click(object sender, RoutedEventArgs e)
         {
             _logService.Clear();
-            MessageBox.Show(this, "已清空运行日志。", "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, L.Get("S_MsgLogsCleared"), "LinkToBrowser", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void RefreshDiag_Click(object sender, RoutedEventArgs e)
         {
             RefreshRegistrationBanner();
             RefreshDiagnostics();
+        }
+
+        private void OpenGitHub_Click(object sender, RoutedEventArgs e) => OpenExternalUrl("https://github.com/D-ruihao/LinkToBrowser");
+
+        private void OpenReleases_Click(object sender, RoutedEventArgs e) => OpenExternalUrl("https://github.com/D-ruihao/LinkToBrowser/releases");
+
+        private static void OpenExternalUrl(string url)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch
+            {
+            }
         }
     }
 }

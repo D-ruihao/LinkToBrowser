@@ -2,7 +2,8 @@
                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-                 Title="选择浏览器"
+                 Title="{DynamicResource S_PickerWindowTitle}"
+                 Icon="pack://application:,,,/LinkToBrowser;component/src/Assets/LinkToBrowser.ico"
                  Width="450"
                  SizeToContent="Height"
                  MaxHeight="560"
@@ -18,7 +19,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="LinkToBrowser · 选择打开方式" ShowMaximize="False" ShowMinimize="False" Height="36" />
+        <ui:TitleBar Grid.Row="0"
+                     Title="{DynamicResource S_PickerTitleBar}"
+                     Icon="{ui:ImageIcon 'pack://application:,,,/LinkToBrowser;component/src/Assets/LinkToBrowser.png'}"
+                     ShowMaximize="False"
+                     ShowMinimize="False"
+                     Height="36" />
 
         <StackPanel Grid.Row="1" Margin="16,4,16,16">
             <ui:InfoBar x:Name="WarningBar"
@@ -49,23 +55,23 @@
                     </StackPanel>
                     <ui:Button x:Name="CopyBtn"
                                Grid.Column="1"
-                               Content="复制"
+                               Content="{DynamicResource S_PickerCopy}"
                                Icon="{ui:SymbolIcon Copy20}"
                                Appearance="Secondary"
-                               ToolTip="复制链接到剪贴板 (Ctrl+C)"
+                               ToolTip="{DynamicResource S_PickerCopyTip}"
                                Margin="0,0,6,0"
                                Click="CopyBtn_Click" />
                     <ui:Button Grid.Column="2"
                                Icon="{ui:SymbolIcon Settings20}"
                                Appearance="Transparent"
-                               ToolTip="打开 LinkToBrowser 设置"
+                               ToolTip="{DynamicResource S_PickerSettingsTip}"
                                Click="SettingsBtn_Click" />
                 </Grid>
             </Border>
 
             <ui:TextBox x:Name="SearchBox"
                         Icon="{ui:SymbolIcon Search20}"
-                        PlaceholderText="输入筛选浏览器，或直接按 1–9 快选..."
+                        PlaceholderText="{DynamicResource S_PickerSearchHint}"
                         Margin="0,0,0,10"
                         TextChanged="SearchBox_TextChanged" />
 
@@ -121,13 +127,13 @@
             </ListBox>
 
             <StackPanel x:Name="EmptyStatePanel" Visibility="Collapsed" Margin="0,16,0,8" HorizontalAlignment="Center">
-                <TextBlock Text="没有找到可用的浏览器条目"
+                <TextBlock Text="{DynamicResource S_PickerEmpty}"
                            HorizontalAlignment="Center"
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            Margin="0,0,0,10" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <ui:Button Content="复制链接" Appearance="Primary" Margin="0,0,8,0" Click="CopyBtn_Click" />
-                    <ui:Button Content="打开设置" Appearance="Secondary" Click="SettingsBtn_Click" />
+                    <ui:Button Content="{DynamicResource S_PickerCopyLink}" Appearance="Primary" Margin="0,0,8,0" Click="CopyBtn_Click" />
+                    <ui:Button Content="{DynamicResource S_PickerOpenSettings}" Appearance="Secondary" Click="SettingsBtn_Click" />
                 </StackPanel>
             </StackPanel>
         </StackPanel>

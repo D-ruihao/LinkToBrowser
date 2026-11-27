@@ -447,6 +447,74 @@ namespace LinkToBrowser.Tests
                 $"CustomBrowserDialog button right edge {maxRightEdge} exceeds {winWidth}");
         }
 
+        [Fact]
+        public void LocalizationService_SwitchesBetweenChineseAndEnglish()
+        {
+            try
+            {
+                L.Apply(LanguageMode.EnUs);
+                Assert.True(L.IsEnglish);
+                var banner = SettingsWindow.EvaluateRegistrationBanner(
+                    isDefault: true,
+                    isRegistered: true,
+                    pathMatchesSelf: true,
+                    httpProg: "LinkToBrowser.URL",
+                    httpsProg: "LinkToBrowser.URL");
+                Assert.Contains("Handling", banner.Title);
+
+                L.Apply(LanguageMode.ZhCn);
+                Assert.False(L.IsEnglish);
+                var zhBanner = SettingsWindow.EvaluateRegistrationBanner(
+                    isDefault: true,
+                    isRegistered: true,
+                    pathMatchesSelf: true,
+                    httpProg: "LinkToBrowser.URL",
+                    httpsProg: "LinkToBrowser.URL");
+                Assert.Contains("已接管", zhBanner.Title);
+            }
+            finally
+            {
+                L.Apply(LanguageMode.ZhCn);
+            }
+        }
+
+        [Fact]
+        public void ClipboardWindow_EnglishMode_CloseButtonWithCountdownFitsInsideWindowWithoutClipping()
+        {
+            string closeText = null;
+            double rowDesiredWidth = 0;
+            double availableContentWidth = 0;
+
+            try
+            {
+                _wpf.Run(() =>
+                {
+                    var win = new ClipboardWindow(
+                        new DispatchResult { Kind = DispatchKind.ShowClipboard, Url = "https://example.com/a", CopyOk = true },
+                        new AppConfig { ClipboardAutoCloseSeconds = 3, Language = LanguageMode.EnUs },
+                        new LogService(_tempDir),
+                        _ => { },
+                        () => { });
+
+                    var closeBtn = (System.Windows.Controls.Button)win.FindName("CloseBtn");
+                    closeText = closeBtn.Content?.ToString();
+                    var buttonGrid = (FrameworkElement)closeBtn.Parent;
+                    buttonGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    rowDesiredWidth = buttonGrid.DesiredSize.Width;
+                    availableContentWidth = win.Width - 32;
+                    win.Close();
+                });
+
+                Assert.Equal("Close (Esc) · 3s", closeText);
+                Assert.True(rowDesiredWidth > 0 && rowDesiredWidth <= availableContentWidth,
+                    $"English button row width {rowDesiredWidth} exceeds available content width {availableContentWidth}");
+            }
+            finally
+            {
+                _wpf.Run(() => L.Apply(LanguageMode.ZhCn));
+            }
+        }
+
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
         {
             if (parent == null) yield break;

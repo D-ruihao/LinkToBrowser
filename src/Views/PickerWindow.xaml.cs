@@ -52,6 +52,7 @@ namespace LinkToBrowser.Views
             _onOpenSettings = onOpenSettings;
             _onLaunchFailed = onLaunchFailed;
 
+            L.Apply(_cfg.Language, this);
             InitializeComponent();
             UiHelpers.ApplyTheme(this, _cfg.Theme);
 
@@ -205,7 +206,7 @@ namespace LinkToBrowser.Views
         {
             var ok = ClipboardService.CopyWithRetry(_url);
             _logService.LogLink(_url, ok, ok ? null : "clipboard copy failed from picker");
-            CopyBtn.Content = ok ? "已复制" : "失败";
+            CopyBtn.Content = L.Get(ok ? "S_PickerCopied" : "S_PickerFailed");
         }
 
         private void SettingsBtn_Click(object sender, RoutedEventArgs e)

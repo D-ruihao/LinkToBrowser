@@ -20,6 +20,7 @@ namespace LinkToBrowser.Views
             _selfExe = selfExe;
             _existingId = existing?.Id;
             InitializeComponent();
+            L.Apply(L.IsEnglish ? LanguageMode.EnUs : LanguageMode.ZhCn, this);
             UiHelpers.ApplyTheme(this, theme);
 
             if (existing != null)
@@ -34,8 +35,8 @@ namespace LinkToBrowser.Views
         {
             var dlg = new OpenFileDialog
             {
-                Filter = "可执行文件 (*.exe)|*.exe|所有文件 (*.*)|*.*",
-                Title = "选择浏览器可执行文件"
+                Filter = L.Get("S_CustomFileFilter"),
+                Title = L.Get("S_CustomFileTitle")
             };
             if (dlg.ShowDialog(this) == true)
             {
@@ -103,19 +104,19 @@ namespace LinkToBrowser.Views
 
             if (string.IsNullOrWhiteSpace(name))
             {
-                error = "请填写显示名称。";
+                error = L.Get("S_CustomErrName");
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
             {
-                error = "可执行文件路径不存在。";
+                error = L.Get("S_CustomErrExe");
                 return false;
             }
 
             if (new BrowserLauncher(_selfExe).IsSelfPath(exe))
             {
-                error = "不能将 LinkToBrowser 自身添加为目标浏览器。";
+                error = L.Get("S_CustomErrSelf");
                 return false;
             }
 

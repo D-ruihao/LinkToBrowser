@@ -14,6 +14,8 @@ namespace LinkToBrowser.Tests
         [InlineData(new[] { "--version" }, CliKind.Ignore, false, "")]
         [InlineData(new[] { "--no-ui" }, CliKind.Ignore, true, "")]
         [InlineData(new[] { "--no-ui", "https://a.test" }, CliKind.HandleUrl, true, "https://a.test")]
+        [InlineData(new[] { "--url=https://a.test/from-flag?x=1" }, CliKind.HandleUrl, false, "https://a.test/from-flag?x=1")]
+        [InlineData(new[] { "--from-app", "https://a.test/wechat" }, CliKind.HandleUrl, false, "https://a.test/wechat")]
         [InlineData(new[] { "https://a.test/x", "y" }, CliKind.HandleUrl, false, "https://a.test/x y")]
         public void Parse_ClassifiesArgs(string[] args, CliKind expectedKind, bool expectedNoUi, string expectedUrl)
         {
@@ -28,6 +30,7 @@ namespace LinkToBrowser.Tests
         [InlineData("linktobrowser.url: http://127.0.0.1:12606/#/sessions?id=abc", "http://127.0.0.1:12606/#/sessions?id=abc")]
         [InlineData("linkclip.url:https://legacy.example/path", "https://legacy.example/path")]
         [InlineData("\"http://127.0.0.1:12606/#/sessions?id=abc\"", "http://127.0.0.1:12606/#/sessions?id=abc")]
+        [InlineData("'https://example.com/single-quoted?a=1'", "https://example.com/single-quoted?a=1")]
         [InlineData("https://e.com/p?q=%E4%B8%AD", "https://e.com/p?q=%E4%B8%AD")]
         [InlineData("https://e.com/a?x=\"q\"", "https://e.com/a?x=\"q\"")]
         public void TryNormalize_PreservesValidUrlsVerbatim(string raw, string expected)
@@ -68,6 +71,15 @@ namespace LinkToBrowser.Tests
         {
             Assert.Equal("example.com", UrlService.Host("https://example.com/a/b"));
             Assert.Equal("127.0.0.1:12606", UrlService.Host("http://127.0.0.1:12606/#/sessions"));
+        }
+
+        [Fact]
+        public void TryNormalize_PreservesVeryLongOAuthLikeUrls()
+        {
+            var longPayload = new string('a', 4000);
+            var url = $"https://auth.example.com/oauth2/authorize?client_id=123&state={longPayload}#callback";
+            Assert.True(UrlService.TryNormalize(url, out var normalized));
+            Assert.Equal(url, normalized);
         }
     }
 }
