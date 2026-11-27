@@ -18,15 +18,15 @@
 
 Windows 11 only lets you bind one fixed default browser for `HTTP`/`HTTPS`, and cannot send external link clicks straight into active isolated / antidetect browser windows. Once set as your per-user `HTTP` / `HTTPS` handler, `LinkToBrowser` routes every clicked link flexibly:
 
-- **URL Routing Rules**: Match by **Domain** (dot-boundary safe, supports `*.` and ports), **URL Prefix**, or **Wildcard** (`*` / `?`) top-to-bottom. Route hits to a specific browser, Chromium profile, custom `.exe`, active isolated window, clipboard, picker, last focused browser, or Windows native default. Includes disabled example templates, a live URL match tester, and `Alt`/`Shift` modifier override to summon the picker.
+- **URL & Source-App Routing Rules**: Match by **Domain** (dot-boundary safe, supports `*.`, ports, and IPv6), **URL Prefix**, **Wildcard** (`*` / `?`), and optional **Source Apps** (e.g. `WeChat.exe`, `QQ.exe`, `Code.exe`) top-to-bottom. Includes rule search, duplication, a live URL + source-app match tester, `Alt`/`Shift` modifier override, and a one-click **Remember domain** checkbox in the picker.
 - **Five Global Modes** *(when no rule matches)*:
   1. **Last Focused Browser**: Opens links in the most recently focused browser window (including minimized windows), with configurable fallback.
-  2. **Browser Picker Popup**: Appears near the cursor with `1–9` hotkeys, live filtering, `↑/↓` + `Enter` launch, and `Ctrl+C` copy.
+  2. **Browser Picker Popup**: Appears near the cursor (mixed-DPI multi-monitor aware) with `1–9` hotkeys, live filtering, `↑/↓` + `Enter` launch, `Ctrl+C` copy, and one-click domain remembering.
   3. **Specific Browser**: Silently opens links in a chosen browser, Chromium profile, active isolated window, or custom executable.
   4. **Copy to Clipboard**: Captures and copies links with an optional auto-closing confirmation popup.
   5. **Windows Native**: Silently forwards links to your previously recorded default browser.
-- **Isolated / Antidetect Browser Support (`DevToolsActivePort` / CDP)**: Discovers running Chromium isolated windows exposing a local `DevToolsActivePort` and opens new tabs directly inside them across Rules, Last Focused, Picker, and Specific Browser modes. *Compatibility note: verified on BitBrowser; other Chromium isolated browsers exposing a standard `DevToolsActivePort` depend on their own configuration, and unavailable targets safely fall back to clipboard copy.*
-- **Config Backup & Automation CLI**: Export/import full configs or rules + custom browsers as JSON (auto-backs up `config.bak.json` before import, supports merge or replace); headless CLI with UTF-8 `--json` output for scripting and automation.
+- **Link Preprocessing & Isolated Browser Support (CDP)**: Optional redirect-wrapper unwrapping (Zhihu, Juejin, QQ, Outlook SafeLinks, etc.; off by default and skips OAuth login links) and custom tracking parameter stripping; opens new tabs directly inside active isolated Chromium windows exposing a local `DevToolsActivePort`. *Compatibility note: verified on BitBrowser; other Chromium isolated browsers exposing a standard `DevToolsActivePort` depend on their own configuration, and unavailable targets safely fall back to clipboard copy.*
+- **Config Backup, Route Logs & Automation CLI**: Export/import full configs or rules + custom browsers as JSON (auto-backs up `config.bak.json` before import, supports merge or replace); `links.log` records source app, matched rule, and target browser; headless CLI with UTF-8 `--json` output for scripting and automation.
 - **Portable & Per-User (`HKCU`)**: Runs on Windows 11's inbox `.NET Framework 4.8` with no admin rights required; stores `config.json` and `logs\` next to the executable, with instant English/Chinese switching and Light/Dark Mica themes.
 
 ---
@@ -39,7 +39,7 @@ Windows 11 only lets you bind one fixed default browser for `HTTP`/`HTTPS`, and 
 
 | Browser Picker Popup | Clipboard Confirmation Popup |
 | :---: | :---: |
-| ![Picker Window](docs/screenshots/picker-v21.png) | ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
+| ![Picker Window](docs/screenshots/picker-v211.png) | ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
 
 ---
 
@@ -63,8 +63,8 @@ LinkToBrowser.exe --list-browsers --include-running --json
 
 # Switch mode / manage rules / dry-run routing
 LinkToBrowser.exe --set-mode recent --fallback clipboard --json
-LinkToBrowser.exe --rules add --name "GitHub" --kind domain --pattern "github.com, *.github.com" --action open --target "Edge" --json
-LinkToBrowser.exe --test-url "https://gist.github.com/D-ruihao" --json
+LinkToBrowser.exe --rules add --name "GitHub" --kind domain --pattern "github.com, *.github.com" --source-app "Code.exe" --action open --target "Edge" --json
+LinkToBrowser.exe --test-url "https://gist.github.com/D-ruihao" --source-app "Code.exe" --json
 
 # Open in specific target / export & import backup (supports --config-dir)
 LinkToBrowser.exe --browser "Edge" "https://example.com" --json

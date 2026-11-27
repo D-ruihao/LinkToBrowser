@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -40,7 +39,6 @@ namespace LinkToBrowser.Core
         private const int GwlExStyle = -20;
         private const int WsExToolWindow = 0x00000080;
         private const uint GwOwner = 4;
-        private const uint ProcessQueryLimitedInformation = 0x1000;
         private const int SwRestore = 9;
         private const int AsfwAny = -1;
 
@@ -483,6 +481,7 @@ namespace LinkToBrowser.Core
                 StringComparer.OrdinalIgnoreCase);
             var normalizedSelf = NormalizePath(selfExePath);
             var cmdCache = new Dictionary<int, string>();
+            var wmiFallbackPids = new HashSet<int>();
 
             EnumWindows((hWnd, _) =>
             {
@@ -504,7 +503,7 @@ namespace LinkToBrowser.Core
                     return true;
                 }
 
-                var exePath = QueryProcessExePath(pid);
+                var exePath = ProcessInfoHelper.QueryProcessExePath(pid);
                 if (string.IsNullOrEmpty(exePath) || string.Equals(NormalizePath(exePath), normalizedSelf, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
@@ -534,8 +533,16 @@ namespace LinkToBrowser.Core
 
                 if (!cmdCache.TryGetValue((int)pid, out var cmd))
                 {
-                    cmd = QueryProcessCommandLine((int)pid);
-                    cmdCache[(int)pid] = cmd;
+                    if (ProcessInfoHelper.TryReadCommandLineFast((int)pid, out cmd))
+                    {
+                        cmdCache[(int)pid] = cmd;
+                    }
+                    else
+                    {
+                        cmd = string.Empty;
+                        cmdCache[(int)pid] = cmd;
+                        wmiFallbackPids.Add((int)pid);
+                    }
                 }
 
                 var titleLen = GetWindowTextLength(hWnd);
@@ -557,48 +564,19 @@ namespace LinkToBrowser.Core
                 return true;
             }, IntPtr.Zero);
 
+            if (wmiFallbackPids.Count > 0)
+            {
+                var wmiCmds = ProcessInfoHelper.QueryCommandLinesBatchWmi(wmiFallbackPids);
+                foreach (var item in results)
+                {
+                    if (wmiCmds.TryGetValue(item.ProcessId, out var fallbackCmd) && !string.IsNullOrEmpty(fallbackCmd))
+                    {
+                        item.CommandLine = fallbackCmd;
+                    }
+                }
+            }
+
             return results;
-        }
-
-        private static string QueryProcessExePath(uint pid)
-        {
-            var handle = IntPtr.Zero;
-            try
-            {
-                handle = OpenProcess(ProcessQueryLimitedInformation, false, pid);
-                if (handle == IntPtr.Zero)
-                {
-                    return string.Empty;
-                }
-
-                var sb = new StringBuilder(1024);
-                var size = sb.Capacity;
-                return QueryFullProcessImageName(handle, 0, sb, ref size) ? sb.ToString(0, size) : string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
-            finally
-            {
-                if (handle != IntPtr.Zero)
-                {
-                    CloseHandle(handle);
-                }
-            }
-        }
-
-        private static string QueryProcessCommandLine(int pid)
-        {
-            try
-            {
-                using var mo = new ManagementObject($"Win32_Process.Handle='{pid}'");
-                return mo["CommandLine"] as string ?? string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
         }
 
         private static string NormalizePath(string path)
@@ -655,14 +633,5 @@ namespace LinkToBrowser.Core
 
         [DllImport("user32.dll")]
         private static extern bool AllowSetForegroundWindow(int dwProcessId);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool CloseHandle(IntPtr hObject);
     }
 }

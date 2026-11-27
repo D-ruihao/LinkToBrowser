@@ -28,6 +28,7 @@ namespace LinkToBrowser.Views
 
         private readonly string _url;
         private readonly AppConfig _cfg;
+        private readonly ConfigService _configService;
         private readonly LogService _logService;
         private readonly string _selfExe;
         private readonly Action _onOpenSettings;
@@ -47,6 +48,7 @@ namespace LinkToBrowser.Views
         {
             _url = url;
             _cfg = cfg ?? new AppConfig();
+            _configService = configService;
             _logService = logService;
             _selfExe = selfExe;
             _onOpenSettings = onOpenSettings;
@@ -56,9 +58,16 @@ namespace LinkToBrowser.Views
             InitializeComponent();
             UiHelpers.ApplyTheme(this, _cfg.Theme);
 
-            HostText.Text = UrlService.Host(url);
+            var host = UrlService.Host(url);
+            HostText.Text = host;
             UrlPreviewText.Text = url;
             UrlPreviewText.ToolTip = url;
+
+            if (!string.IsNullOrWhiteSpace(host) && _configService != null)
+            {
+                RememberDomainCheck.Content = L.Format("S_PickerRememberDomain", host);
+                RememberDomainCheck.Visibility = Visibility.Visible;
+            }
 
             if (!string.IsNullOrWhiteSpace(warning))
             {
@@ -215,6 +224,71 @@ namespace LinkToBrowser.Views
             Close();
         }
 
+        public static RoutingRule SaveRememberDomainRule(AppConfig cfg, ConfigService configService, string url, BrowserEntry entry)
+        {
+            if (cfg == null || configService == null || entry == null || string.IsNullOrWhiteSpace(url))
+            {
+                return null;
+            }
+
+            var host = UrlService.Host(url);
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return null;
+            }
+
+            cfg.Rules ??= new List<RoutingRule>();
+            cfg.Rules.RemoveAll(r =>
+                r != null &&
+                r.MatchKind == RuleMatchKind.DomainSuffix &&
+                string.IsNullOrWhiteSpace(r.SourceApps) &&
+                string.Equals(r.Pattern?.Trim(), host, StringComparison.OrdinalIgnoreCase));
+
+            var rule = new RoutingRule
+            {
+                Id = $"rule:{Guid.NewGuid():N}",
+                Enabled = true,
+                Name = host,
+                MatchKind = RuleMatchKind.DomainSuffix,
+                Pattern = host,
+                SourceApps = string.Empty,
+                Action = RuleActionKind.OpenTarget,
+                TargetBrowser = new BrowserEntry
+                {
+                    Id = entry.Id,
+                    Name = entry.Name,
+                    ExecutablePath = entry.ExecutablePath,
+                    ArgumentsTemplate = entry.ArgumentsTemplate,
+                    ProgId = entry.ProgId,
+                    UserDataDir = entry.UserDataDir,
+                    Kind = entry.Kind
+                }
+            };
+
+            cfg.Rules.Insert(0, rule);
+            cfg.EnableRoutingRules = true;
+            cfg.SampleRulesSeeded = true;
+            configService.Save(cfg);
+            return rule;
+        }
+
+        private void TryRememberDomain(BrowserEntry entry)
+        {
+            if (RememberDomainCheck.IsChecked != true || _configService == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var latestCfg = _configService.Load();
+                SaveRememberDomainRule(latestCfg, _configService, _url, entry);
+            }
+            catch
+            {
+            }
+        }
+
         private void LaunchItem(BrowserEntry entry)
         {
             if (_cfg.EnableCdpForIsolatedBrowsers &&
@@ -223,13 +297,14 @@ namespace LinkToBrowser.Views
             {
                 if (CdpClient.TryOpenTab(entry.UserDataDir, _url, out var cdpErr))
                 {
+                    TryRememberDomain(entry);
                     var hwnd = RecentBrowserService.FindWindowByUserDataDir(entry.UserDataDir, _selfExe);
                     if (hwnd != IntPtr.Zero)
                     {
                         RecentBrowserService.ActivateWindow(hwnd);
                     }
 
-                    _logService.LogLink(_url, true);
+                    _logService.LogLink(_url, true, $"action=Picker:CDP | target={entry.Name}");
                     Close();
                     return;
                 }
@@ -237,7 +312,7 @@ namespace LinkToBrowser.Views
                 if (entry.Kind == BrowserKind.RunningWindow)
                 {
                     var clipOk = ClipboardService.CopyWithRetry(_url);
-                    _logService.LogLink(_url, clipOk, $"picker cdp failed: {cdpErr}");
+                    _logService.LogLink(_url, clipOk, $"action=Picker:CDP | target={entry.Name} | warn={cdpErr}");
                     _onLaunchFailed?.Invoke(_url, cdpErr, clipOk);
                     Close();
                     return;
@@ -248,7 +323,7 @@ namespace LinkToBrowser.Views
             {
                 var clipOk = ClipboardService.CopyWithRetry(_url);
                 var msg = L.Format("S_WarnIsolatedNotRunning", entry.Name, "DevToolsActivePort unavailable");
-                _logService.LogLink(_url, clipOk, msg);
+                _logService.LogLink(_url, clipOk, $"action=Picker:Isolated | target={entry.Name} | warn={msg}");
                 _onLaunchFailed?.Invoke(_url, msg, clipOk);
                 Close();
                 return;
@@ -257,13 +332,14 @@ namespace LinkToBrowser.Views
             var launcher = new BrowserLauncher(_selfExe);
             if (launcher.TryLaunch(entry.ExecutablePath, entry.ArgumentsTemplate, _url, out var err))
             {
-                _logService.LogLink(_url, true);
+                TryRememberDomain(entry);
+                _logService.LogLink(_url, true, $"action=Picker:Process | target={entry.Name}");
                 Close();
                 return;
             }
 
             var copyOk = ClipboardService.CopyWithRetry(_url);
-            _logService.LogLink(_url, copyOk, $"picker launch failed: {err}");
+            _logService.LogLink(_url, copyOk, $"action=Picker:Process | target={entry.Name} | warn={err}");
             _onLaunchFailed?.Invoke(_url, err, copyOk);
             Close();
         }

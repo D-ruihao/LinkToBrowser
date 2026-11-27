@@ -558,6 +558,118 @@ namespace LinkToBrowser.Tests
                 $"RuleDialog button right edge {maxRightEdge} exceeds {winWidth}");
         }
 
+        [Fact]
+        public void UiHelpers_MixedDpiPlacement_ClampsInsideSecondaryMonitorPhysicalBounds()
+        {
+            // Secondary 100% monitor located to the right of a 150% primary monitor (X = 2560..4480, Y = 0..1040)
+            var secondaryWorkArea = new System.Drawing.Rectangle(2560, 0, 1920, 1040);
+            var cursorNearRightEdge = new System.Drawing.Point(4400, 950);
+
+            var (leftPx, topPx) = UiHelpers.ComputePlacementNearCursorPx(
+                cursorNearRightEdge,
+                secondaryWorkArea,
+                scaleX: 1.0,
+                scaleY: 1.0,
+                widthDip: 450,
+                heightDip: 360);
+
+            Assert.InRange(leftPx, secondaryWorkArea.Left + 8, secondaryWorkArea.Right - 450);
+            Assert.InRange(topPx, secondaryWorkArea.Top + 8, secondaryWorkArea.Bottom - 360);
+
+            var (centerLeft, centerTop) = UiHelpers.ComputeCenteredOnScreenPx(
+                secondaryWorkArea,
+                scaleX: 1.25,
+                scaleY: 1.25,
+                widthDip: 400,
+                heightDip: 200);
+            Assert.Equal(2560 + (1920 - 500) / 2, centerLeft);
+            Assert.Equal((1040 - 250) / 2, centerTop);
+        }
+
+        [Fact]
+        public void PickerWindow_SaveRememberDomainRule_InsertsAtTopAndDeduplicatesSameDomain()
+        {
+            var cfgSvc = new ConfigService(_tempDir, _tempDir);
+            var cfg = new AppConfig
+            {
+                EnableRoutingRules = false,
+                Rules =
+                {
+                    new RoutingRule
+                    {
+                        Id = "r-broad",
+                        Enabled = true,
+                        Name = "Broad Wildcard",
+                        MatchKind = RuleMatchKind.Wildcard,
+                        Pattern = "*github*",
+                        Action = RuleActionKind.ClipboardOnly
+                    }
+                }
+            };
+            cfgSvc.Save(cfg);
+
+            var edge = new BrowserEntry { Id = "edge", Name = "Microsoft Edge", ExecutablePath = @"C:\msedge.exe" };
+            var created = PickerWindow.SaveRememberDomainRule(cfg, cfgSvc, "https://github.com/D-ruihao/LinkToBrowser", edge);
+
+            Assert.NotNull(created);
+            var reloaded = cfgSvc.Load();
+            Assert.True(reloaded.EnableRoutingRules);
+            Assert.Equal(2, reloaded.Rules.Count);
+            Assert.Equal("github.com", reloaded.Rules[0].Pattern);
+            Assert.Equal("Microsoft Edge", reloaded.Rules[0].TargetBrowser.Name);
+            Assert.Equal("r-broad", reloaded.Rules[1].Id);
+
+            // Remembering same domain again with Chrome replaces top entry instead of duplicating
+            var chrome = new BrowserEntry { Id = "chrome", Name = "Google Chrome", ExecutablePath = @"C:\chrome.exe" };
+            PickerWindow.SaveRememberDomainRule(reloaded, cfgSvc, "https://github.com/other", chrome);
+            var reloaded2 = cfgSvc.Load();
+            Assert.Equal(2, reloaded2.Rules.Count);
+            Assert.Equal("Google Chrome", reloaded2.Rules[0].TargetBrowser.Name);
+        }
+
+        [Fact]
+        public void SettingsWindow_RemoveCustomBrowserFromConfig_DisablesReferencingRulesAndClearsTarget()
+        {
+            var custom = new BrowserEntry
+            {
+                Id = "custom:work",
+                Name = "Work Browser",
+                ExecutablePath = @"C:\work.exe",
+                Kind = BrowserKind.Custom
+            };
+            var cfg = new AppConfig
+            {
+                DefaultBrowser = custom,
+                CustomBrowsers = { custom },
+                Rules =
+                {
+                    new RoutingRule
+                    {
+                        Id = "r1",
+                        Enabled = true,
+                        Pattern = "corp.local",
+                        Action = RuleActionKind.OpenTarget,
+                        TargetBrowser = custom
+                    },
+                    new RoutingRule
+                    {
+                        Id = "r2",
+                        Enabled = true,
+                        Pattern = "github.com",
+                        Action = RuleActionKind.ClipboardOnly
+                    }
+                }
+            };
+
+            var affected = SettingsWindow.RemoveCustomBrowserFromConfig(cfg, custom.Id);
+            Assert.Equal(1, affected);
+            Assert.Empty(cfg.CustomBrowsers);
+            Assert.Null(cfg.DefaultBrowser);
+            Assert.False(cfg.Rules[0].Enabled);
+            Assert.Null(cfg.Rules[0].TargetBrowser);
+            Assert.True(cfg.Rules[1].Enabled);
+        }
+
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
         {
             if (parent == null) yield break;

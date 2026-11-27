@@ -122,9 +122,9 @@ namespace LinkToBrowser.Core
                 new { command = "--status [--include-running] [--json]", description = "Show config, registration status, and summary" },
                 new { command = "--list-browsers [--include-hidden] [--include-running] [--json]", description = "List discovered, custom, and active isolated browsers" },
                 new { command = "--set-mode <native|default|picker|clipboard|recent> [--target <id|name>] [--fallback <picker|clipboard|default|native>] [--json]", description = "Set global routing mode" },
-                new { command = "--test-url <url> [--json]", description = "Dry-run URL routing and rule matching without launching" },
+                new { command = "--test-url <url> [--source-app <exe>] [--json]", description = "Dry-run URL routing and rule matching without launching" },
                 new { command = "--rules list [--json]", description = "List all URL routing rules" },
-                new { command = "--rules add --pattern <pat> [--kind domain|prefix|wildcard] [--action open|clipboard|picker|recent|native] [--target <id|name>] [--name <label>] [--disabled] [--json]", description = "Add a routing rule" },
+                new { command = "--rules add [--pattern <pat>] [--source-app <apps>] [--kind domain|prefix|wildcard] [--action open|clipboard|picker|recent|native] [--target <id|name>] [--name <label>] [--disabled] [--json]", description = "Add a routing rule" },
                 new { command = "--rules enable|disable|remove <id|name> [--json]", description = "Enable, disable, or remove a routing rule" },
                 new { command = "--browser <id|name> <url> [--json]", description = "Open URL directly in a specific browser or active CDP window" },
                 new { command = "--export <path> [--rules-only] [--json]", description = "Export configuration or rules backup JSON" },
@@ -184,6 +184,9 @@ namespace LinkToBrowser.Core
                 theme = cfg.Theme.ToString(),
                 enableRoutingRules = cfg.EnableRoutingRules,
                 enableCdp = cfg.EnableCdpForIsolatedBrowsers,
+                unwrapRedirectUrls = cfg.UnwrapRedirectUrls,
+                stripTrackingParams = cfg.StripTrackingParams,
+                customTrackingParams = cfg.CustomTrackingParams,
                 rulesTotal = cfg.Rules.Count,
                 rulesEnabled = cfg.Rules.Count(r => r.Enabled),
                 browsersTotal = browsers.Count
@@ -292,8 +295,10 @@ namespace LinkToBrowser.Core
             }
 
             var cfg = configService.Load();
-            var effectiveUrl = cfg.StripTrackingParams ? UrlService.StripTracking(url) : url;
-            var matchedRule = cfg.EnableRoutingRules ? RuleMatcher.Match(effectiveUrl, cfg.Rules) : null;
+            var unwrappedUrl = cfg.UnwrapRedirectUrls ? UrlService.UnwrapRedirectUrl(url) : url;
+            var effectiveUrl = cfg.StripTrackingParams ? UrlService.StripTracking(unwrappedUrl, cfg.CustomTrackingParams) : unwrappedUrl;
+            var sourceApp = ProcessInfoHelper.NormalizeExeFileName(inv.SourceAppArg);
+            var matchedRule = cfg.EnableRoutingRules ? RuleMatcher.Match(effectiveUrl, cfg.Rules, sourceApp) : null;
 
             string plannedAction;
             string targetDesc = string.Empty;
@@ -322,13 +327,16 @@ namespace LinkToBrowser.Core
             {
                 inputUrl = inv.RawUrl,
                 normalizedUrl = url,
+                unwrappedUrl,
                 effectiveUrl,
+                sourceApp,
                 matchedRule = matchedRule == null ? null : new
                 {
                     id = matchedRule.Id,
                     name = matchedRule.Name,
                     matchKind = matchedRule.MatchKind.ToString(),
                     pattern = matchedRule.Pattern,
+                    sourceApps = matchedRule.SourceApps,
                     action = matchedRule.Action.ToString(),
                     targetBrowser = matchedRule.TargetBrowser?.Name
                 },
@@ -363,6 +371,7 @@ namespace LinkToBrowser.Core
                         name = r.Name,
                         matchKind = r.MatchKind.ToString(),
                         pattern = r.Pattern,
+                        sourceApps = r.SourceApps,
                         action = r.Action.ToString(),
                         targetBrowser = r.TargetBrowser?.Name
                     }).ToList();
@@ -374,16 +383,17 @@ namespace LinkToBrowser.Core
 
                     foreach (var r in items)
                     {
-                        output.WriteLine($"[{(r.enabled ? "ON" : "OFF")}] {r.name} ({r.matchKind}: {r.pattern}) -> {r.action} {r.targetBrowser} [id={r.id}]");
+                        var srcPart = string.IsNullOrWhiteSpace(r.sourceApps) ? string.Empty : $" from {r.sourceApps}";
+                        output.WriteLine($"[{(r.enabled ? "ON" : "OFF")}] {r.name} ({r.matchKind}: {r.pattern}{srcPart}) -> {r.action} {r.targetBrowser} [id={r.id}]");
                     }
                     return 0;
                 }
 
                 case "add":
                 {
-                    if (!RuleMatcher.HasValidTokens(inv.PatternArg))
+                    if (!RuleMatcher.HasValidTokens(inv.PatternArg) && !RuleMatcher.HasValidTokens(inv.SourceAppArg))
                     {
-                        return WriteResult(inv, output, ok: false, error: "--pattern is required and must contain at least one valid token.", data: null, exitCode: 2);
+                        return WriteResult(inv, output, ok: false, error: "--pattern or --source-app is required and must contain at least one valid token.", data: null, exitCode: 2);
                     }
 
                     if (!string.IsNullOrWhiteSpace(inv.IdArg) &&
@@ -421,13 +431,15 @@ namespace LinkToBrowser.Core
                         targetBrowser = CloneBrowser(targetBrowser);
                     }
 
+                    var defaultName = !string.IsNullOrWhiteSpace(inv.PatternArg) ? inv.PatternArg : inv.SourceAppArg;
                     var newRule = new RoutingRule
                     {
                         Id = string.IsNullOrWhiteSpace(inv.IdArg) ? $"rule:{Guid.NewGuid():N}" : inv.IdArg,
                         Enabled = !inv.Disabled,
-                        Name = string.IsNullOrWhiteSpace(inv.NameArg) ? inv.PatternArg : inv.NameArg,
+                        Name = string.IsNullOrWhiteSpace(inv.NameArg) ? defaultName : inv.NameArg,
                         MatchKind = matchKind,
-                        Pattern = inv.PatternArg,
+                        Pattern = (inv.PatternArg ?? string.Empty).Trim(),
+                        SourceApps = (inv.SourceAppArg ?? string.Empty).Trim(),
                         Action = action,
                         TargetBrowser = targetBrowser
                     };
@@ -443,6 +455,7 @@ namespace LinkToBrowser.Core
                         name = newRule.Name,
                         matchKind = newRule.MatchKind.ToString(),
                         pattern = newRule.Pattern,
+                        sourceApps = newRule.SourceApps,
                         action = newRule.Action.ToString(),
                         targetBrowser = newRule.TargetBrowser?.Name
                     };
@@ -550,10 +563,7 @@ namespace LinkToBrowser.Core
             }
 
             var cfg = configService.Load();
-            if (cfg.StripTrackingParams)
-            {
-                url = UrlService.StripTracking(url);
-            }
+            url = UrlService.Prepare(url, cfg);
 
             var browsers = BrowserCatalog.GetAllWithRunning(cfg, selfExe, includeHidden: true);
             var target = MatchBrowser(browsers, inv.BrowserArg);
@@ -574,13 +584,13 @@ namespace LinkToBrowser.Core
                         RecentBrowserService.ActivateWindow(hwnd);
                     }
 
-                    logService.LogLink(url, true);
+                    logService.LogLink(url, true, $"action=CliOpen:CDP | target={target.Name}");
                     return WriteResult(inv, output, ok: true, error: null, data: new { method = "cdp", target = target.Name, url }, plainMessage: $"Opened in {target.Name} via CDP");
                 }
 
                 if (target.Kind == BrowserKind.RunningWindow)
                 {
-                    logService.LogLink(url, false, cdpErr);
+                    logService.LogLink(url, false, $"action=CliOpen:CDP | target={target.Name} | warn={cdpErr}");
                     return WriteResult(inv, output, ok: false, error: cdpErr, data: null, exitCode: 2);
                 }
             }
@@ -590,18 +600,18 @@ namespace LinkToBrowser.Core
                 var errMsg = cfg.EnableCdpForIsolatedBrowsers
                     ? $"Target isolated browser ({target.Name}) DevToolsActivePort is unavailable."
                     : $"Target isolated browser ({target.Name}) requires CDP integration to be enabled.";
-                logService.LogLink(url, false, errMsg);
+                logService.LogLink(url, false, $"action=CliOpen:Isolated | target={target.Name} | warn={errMsg}");
                 return WriteResult(inv, output, ok: false, error: errMsg, data: null, exitCode: 2);
             }
 
             var launcher = new BrowserLauncher(selfExe);
             if (!launcher.TryLaunch(target.ExecutablePath, target.ArgumentsTemplate, url, out var launchErr))
             {
-                logService.LogLink(url, false, launchErr);
+                logService.LogLink(url, false, $"action=CliOpen:Process | target={target.Name} | warn={launchErr}");
                 return WriteResult(inv, output, ok: false, error: launchErr, data: null, exitCode: 2);
             }
 
-            logService.LogLink(url, true);
+            logService.LogLink(url, true, $"action=CliOpen:Process | target={target.Name}");
             return WriteResult(inv, output, ok: true, error: null, data: new { method = "process", target = target.Name, url }, plainMessage: $"Opened in {target.Name}");
         }
 

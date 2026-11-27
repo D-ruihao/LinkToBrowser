@@ -384,6 +384,35 @@
                             <ui:CardControl Margin="0,0,0,6">
                                 <ui:CardControl.Header>
                                     <StackPanel>
+                                        <TextBlock Text="{DynamicResource S_CustomTrackingTitle}" FontWeight="SemiBold" FontSize="13.5" />
+                                        <TextBlock Text="{DynamicResource S_CustomTrackingDesc}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:TextBox x:Name="CustomTrackingBox"
+                                            Width="210"
+                                            PlaceholderText="{DynamicResource S_CustomTrackingHint}"
+                                            TextChanged="CustomTrackingBox_TextChanged" />
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,6">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource S_UnwrapRedirectTitle}" FontWeight="SemiBold" FontSize="13.5" />
+                                        <TextBlock Text="{DynamicResource S_UnwrapRedirectDesc}"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </ui:CardControl.Header>
+                                <ui:ToggleSwitch x:Name="UnwrapRedirectToggle" Checked="SettingToggle_Changed" Unchecked="SettingToggle_Changed" />
+                            </ui:CardControl>
+
+                            <ui:CardControl Margin="0,0,0,6">
+                                <ui:CardControl.Header>
+                                    <StackPanel>
                                         <TextBlock Text="{DynamicResource S_EnableCdpTitle}" FontWeight="SemiBold" FontSize="13.5" />
                                         <TextBlock Text="{DynamicResource S_EnableCdpDesc}"
                                                    FontSize="12"
@@ -459,15 +488,34 @@
 
                             <Border CornerRadius="8"
                                     Padding="12,10"
-                                    Margin="0,0,0,12"
+                                    Margin="0,0,0,10"
                                     Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
                                     BorderThickness="1">
                                 <StackPanel>
-                                    <ui:TextBox x:Name="RuleTestBox"
-                                                Icon="{ui:SymbolIcon Search20}"
-                                                PlaceholderText="{DynamicResource S_RulesTestHint}"
-                                                TextChanged="RuleTestBox_TextChanged" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="210" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <ui:TextBox x:Name="RuleTestBox"
+                                                    Grid.Column="0"
+                                                    Icon="{ui:SymbolIcon Search20}"
+                                                    PlaceholderText="{DynamicResource S_RulesTestHint}"
+                                                    Margin="0,0,8,0"
+                                                    TextChanged="RuleTestBox_TextChanged" />
+                                        <ui:TextBox x:Name="RuleTestSourceBox"
+                                                    Grid.Column="1"
+                                                    PlaceholderText="{DynamicResource S_RulesTestSourceHint}"
+                                                    Margin="0,0,6,0"
+                                                    TextChanged="RuleTestBox_TextChanged" />
+                                        <ui:Button Grid.Column="2"
+                                                   Icon="{ui:SymbolIcon Dismiss20}"
+                                                   Appearance="Transparent"
+                                                   ToolTip="{DynamicResource S_TipClear}"
+                                                   Click="ClearRuleTest_Click" />
+                                    </Grid>
                                     <TextBlock x:Name="RuleTestResultText"
                                                FontSize="12"
                                                Margin="2,6,2,0"
@@ -475,6 +523,12 @@
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
                             </Border>
+
+                            <ui:TextBox x:Name="RuleSearchBox"
+                                        Icon="{ui:SymbolIcon Filter20}"
+                                        PlaceholderText="{DynamicResource S_RulesSearchHint}"
+                                        Margin="0,0,0,10"
+                                        TextChanged="RuleSearchBox_TextChanged" />
 
                             <ItemsControl x:Name="RulesListControl">
                                 <ItemsControl.ItemTemplate>
@@ -541,6 +595,11 @@
                                                                Tag="{Binding}"
                                                                Margin="0,0,4,0"
                                                                Click="MoveRuleDown_Click" />
+                                                    <ui:Button Icon="{ui:SymbolIcon Copy20}"
+                                                               Appearance="Transparent"
+                                                               ToolTip="{DynamicResource S_TipDuplicate}"
+                                                               Tag="{Binding}"
+                                                               Click="DuplicateRule_Click" />
                                                     <ui:Button Icon="{ui:SymbolIcon Edit20}"
                                                                Appearance="Transparent"
                                                                ToolTip="{DynamicResource S_TipEdit}"

@@ -62,6 +62,7 @@ namespace LinkToBrowser.Views
             {
                 NameBox.Text = existing.Name;
                 PatternBox.Text = existing.Pattern;
+                SourceAppsBox.Text = existing.SourceApps;
                 SelectItem(MatchKindCombo, existing.MatchKind, RuleMatchKind.DomainSuffix);
                 SelectItem(ActionCombo, existing.Action, RuleActionKind.OpenTarget);
                 if (existing.TargetBrowser != null)
@@ -134,10 +135,23 @@ namespace LinkToBrowser.Views
             if (string.IsNullOrWhiteSpace(NameBox.Text)) NameBox.Text = L.Get("S_RulePresetOAuthName");
         }
 
+        private void PresetWeChat_Click(object sender, RoutedEventArgs e)
+        {
+            SourceAppsBox.Text = "WeChat.exe, Weixin.exe, QQ.exe";
+            if (string.IsNullOrWhiteSpace(NameBox.Text)) NameBox.Text = "WeChat / QQ";
+        }
+
+        private void PresetVSCode_Click(object sender, RoutedEventArgs e)
+        {
+            SourceAppsBox.Text = "Code.exe, Cursor.exe";
+            if (string.IsNullOrWhiteSpace(NameBox.Text)) NameBox.Text = "VS Code / Cursor";
+        }
+
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             var pattern = (PatternBox.Text ?? string.Empty).Trim();
-            if (!RuleMatcher.HasValidTokens(pattern))
+            var sourceApps = (SourceAppsBox.Text ?? string.Empty).Trim();
+            if (!RuleMatcher.HasValidTokens(pattern) && !RuleMatcher.HasValidTokens(sourceApps))
             {
                 ErrorBar.Message = L.Get("S_RuleErrPattern");
                 ErrorBar.IsOpen = true;
@@ -170,13 +184,15 @@ namespace LinkToBrowser.Views
             }
 
             var name = (NameBox.Text ?? string.Empty).Trim();
+            var fallbackName = !string.IsNullOrEmpty(pattern) ? pattern : sourceApps;
             ResultRule = new RoutingRule
             {
                 Id = string.IsNullOrEmpty(_existingId) ? $"rule:{Guid.NewGuid():N}" : _existingId,
                 Enabled = _existingEnabled,
-                Name = string.IsNullOrEmpty(name) ? pattern : name,
+                Name = string.IsNullOrEmpty(name) ? fallbackName : name,
                 MatchKind = matchKind,
                 Pattern = pattern,
+                SourceApps = sourceApps,
                 Action = action,
                 TargetBrowser = target
             };

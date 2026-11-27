@@ -43,6 +43,7 @@ namespace LinkToBrowser.Models
         public string Name { get; set; } = string.Empty;
         public RuleMatchKind MatchKind { get; set; } = RuleMatchKind.DomainSuffix;
         public string Pattern { get; set; } = string.Empty;
+        public string SourceApps { get; set; } = string.Empty;
         public RuleActionKind Action { get; set; } = RuleActionKind.OpenTarget;
         public BrowserEntry TargetBrowser { get; set; }
     }
@@ -80,6 +81,8 @@ namespace LinkToBrowser.Models
         public bool ShowClipboardPopup { get; set; } = true;
         public int ClipboardAutoCloseSeconds { get; set; }
         public bool StripTrackingParams { get; set; }
+        public bool UnwrapRedirectUrls { get; set; }
+        public List<string> CustomTrackingParams { get; set; } = new List<string>();
         public bool ShowChromiumProfiles { get; set; } = true;
         public ThemeMode Theme { get; set; } = ThemeMode.System;
         public LanguageMode Language { get; set; } = LanguageMode.ZhCn;
@@ -98,7 +101,7 @@ namespace LinkToBrowser.Models
             if (ClipboardAutoCloseSeconds < 0) ClipboardAutoCloseSeconds = 0;
             OriginalDefaultProgId ??= DefaultOriginalProgId;
             Rules ??= new List<RoutingRule>();
-            Rules.RemoveAll(r => r == null || !Core.RuleMatcher.HasValidTokens(r.Pattern));
+            Rules.RemoveAll(r => r == null || (!Core.RuleMatcher.HasValidTokens(r.Pattern) && !Core.RuleMatcher.HasValidTokens(r.SourceApps)));
             var seenRuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var r in Rules)
             {
@@ -110,7 +113,21 @@ namespace LinkToBrowser.Models
 
                 r.Name = (r.Name ?? string.Empty).Trim();
                 r.Pattern = (r.Pattern ?? string.Empty).Trim();
+                r.SourceApps = (r.SourceApps ?? string.Empty).Trim();
             }
+
+            CustomTrackingParams ??= new List<string>();
+            var cleanedParams = new List<string>();
+            var seenParams = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in CustomTrackingParams)
+            {
+                var trimmed = (p ?? string.Empty).Trim();
+                if (trimmed.Length > 0 && seenParams.Add(trimmed))
+                {
+                    cleanedParams.Add(trimmed);
+                }
+            }
+            CustomTrackingParams = cleanedParams;
 
             HiddenBrowserIds ??= new List<string>();
             BrowserOrder ??= new List<string>();

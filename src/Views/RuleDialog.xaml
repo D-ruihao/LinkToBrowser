@@ -47,6 +47,14 @@
                 <ui:Button Content="{DynamicResource S_RulePresetOAuth}" Appearance="Secondary" Click="PresetOAuth_Click" />
             </WrapPanel>
 
+            <TextBlock Text="{DynamicResource S_RuleSourceAppsLabel}" FontWeight="SemiBold" Margin="0,0,0,6" />
+            <ui:TextBox x:Name="SourceAppsBox" PlaceholderText="{DynamicResource S_RuleSourceAppsHint}" Margin="0,0,0,8" />
+
+            <WrapPanel Margin="0,0,0,12">
+                <ui:Button Content="{DynamicResource S_RulePresetWeChat}" Appearance="Secondary" Margin="0,0,8,0" Click="PresetWeChat_Click" />
+                <ui:Button Content="{DynamicResource S_RulePresetVSCode}" Appearance="Secondary" Click="PresetVSCode_Click" />
+            </WrapPanel>
+
             <TextBlock Text="{DynamicResource S_RuleActionLabel}" FontWeight="SemiBold" Margin="0,0,0,6" />
             <ComboBox x:Name="ActionCombo" Margin="0,0,0,12" SelectionChanged="ActionCombo_SelectionChanged" />
 

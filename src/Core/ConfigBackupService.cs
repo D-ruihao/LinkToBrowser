@@ -147,7 +147,7 @@ namespace LinkToBrowser.Core
             }
 
             var existingRuleKeys = new HashSet<string>(
-                cur.Rules.Select(r => $"{r.MatchKind}|{r.Pattern}"),
+                cur.Rules.Select(r => $"{r.MatchKind}|{r.Pattern}|{r.SourceApps}"),
                 StringComparer.OrdinalIgnoreCase);
             var existingRuleIds = new HashSet<string>(
                 cur.Rules.Where(r => !string.IsNullOrWhiteSpace(r.Id)).Select(r => r.Id),
@@ -155,12 +155,12 @@ namespace LinkToBrowser.Core
 
             foreach (var r in inc.Rules)
             {
-                if (r == null || !RuleMatcher.HasValidTokens(r.Pattern))
+                if (r == null || (!RuleMatcher.HasValidTokens(r.Pattern) && !RuleMatcher.HasValidTokens(r.SourceApps)))
                 {
                     continue;
                 }
 
-                var key = $"{r.MatchKind}|{r.Pattern}";
+                var key = $"{r.MatchKind}|{r.Pattern}|{r.SourceApps}";
                 if (existingRuleKeys.Add(key))
                 {
                     if (string.IsNullOrWhiteSpace(r.Id) || !existingRuleIds.Add(r.Id))

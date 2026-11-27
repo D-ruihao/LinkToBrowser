@@ -17,6 +17,21 @@ namespace LinkToBrowser.Core
         public string Url { get; set; } = string.Empty;
         public bool CopyOk { get; set; }
         public string Warning { get; set; } = string.Empty;
+        public string SourceApp { get; set; } = string.Empty;
+        public string MatchedRuleName { get; set; } = string.Empty;
+        public string RouteAction { get; set; } = string.Empty;
+        public string TargetName { get; set; } = string.Empty;
+
+        public string FormatRouteDetail()
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (!string.IsNullOrWhiteSpace(SourceApp)) parts.Add($"src={SourceApp}");
+            if (!string.IsNullOrWhiteSpace(MatchedRuleName)) parts.Add($"rule={MatchedRuleName}");
+            if (!string.IsNullOrWhiteSpace(RouteAction)) parts.Add($"action={RouteAction}");
+            if (!string.IsNullOrWhiteSpace(TargetName)) parts.Add($"target={TargetName}");
+            if (!string.IsNullOrWhiteSpace(Warning)) parts.Add($"warn={Warning}");
+            return string.Join(" | ", parts);
+        }
     }
 
     public sealed class LinkDispatcher
@@ -31,6 +46,7 @@ namespace LinkToBrowser.Core
         private readonly Func<string, string, (bool ok, string err)> _openViaCdp;
         private readonly Action<IntPtr> _activateWindow;
         private readonly Func<string, IntPtr> _findWindowByUserDataDir;
+        private readonly Func<string> _detectSourceApp;
 
         public LinkDispatcher(
             AppConfig cfg,
@@ -39,7 +55,7 @@ namespace LinkToBrowser.Core
             Func<string, string> resolveProgId,
             Func<ModifierKey, bool> isKeyDown,
             Func<string, (bool ok, string exe, string args)> splitCommand)
-            : this(cfg, launch, copy, resolveProgId, isKeyDown, splitCommand, null, null, null, null)
+            : this(cfg, launch, copy, resolveProgId, isKeyDown, splitCommand, null, null, null, null, null)
         {
         }
 
@@ -53,7 +69,8 @@ namespace LinkToBrowser.Core
             Func<RecentBrowserTarget> findRecentBrowser,
             Func<string, string, (bool ok, string err)> openViaCdp,
             Action<IntPtr> activateWindow,
-            Func<string, IntPtr> findWindowByUserDataDir = null)
+            Func<string, IntPtr> findWindowByUserDataDir = null,
+            Func<string> detectSourceApp = null)
         {
             _cfg = cfg ?? new AppConfig();
             _launch = launch;
@@ -65,6 +82,7 @@ namespace LinkToBrowser.Core
             _openViaCdp = openViaCdp;
             _activateWindow = activateWindow;
             _findWindowByUserDataDir = findWindowByUserDataDir;
+            _detectSourceApp = detectSourceApp;
         }
 
         public DispatchResult Dispatch(CliInvocation inv)
@@ -85,10 +103,10 @@ namespace LinkToBrowser.Core
                 };
             }
 
-            if (_cfg.StripTrackingParams)
-            {
-                url = UrlService.StripTracking(url);
-            }
+            url = UrlService.Prepare(url, _cfg);
+
+            var sourceApp = string.Empty;
+            try { sourceApp = _detectSourceApp?.Invoke() ?? string.Empty; } catch { }
 
             if (inv.NoUi)
             {
@@ -98,38 +116,53 @@ namespace LinkToBrowser.Core
                     Kind = DispatchKind.Done,
                     ExitCode = ok ? 0 : 2,
                     Url = url,
-                    CopyOk = ok
+                    CopyOk = ok,
+                    SourceApp = sourceApp,
+                    RouteAction = "NoUiClipboard"
                 };
             }
 
             if (_cfg.Modifier != ModifierKey.None && _isKeyDown(_cfg.Modifier))
             {
-                return new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url };
+                return new DispatchResult
+                {
+                    Kind = DispatchKind.ShowPicker,
+                    Url = url,
+                    SourceApp = sourceApp,
+                    RouteAction = "ModifierPicker"
+                };
             }
 
             if (_cfg.EnableRoutingRules && _cfg.Rules != null && _cfg.Rules.Count > 0)
             {
-                var matchedRule = RuleMatcher.Match(url, _cfg.Rules);
+                var matchedRule = RuleMatcher.Match(url, _cfg.Rules, sourceApp);
                 if (matchedRule != null)
                 {
-                    return ExecuteRule(matchedRule, url);
+                    var ruleRes = ExecuteRule(matchedRule, url);
+                    ruleRes.SourceApp = sourceApp;
+                    ruleRes.MatchedRuleName = string.IsNullOrWhiteSpace(matchedRule.Name)
+                        ? (string.IsNullOrWhiteSpace(matchedRule.Pattern) ? matchedRule.SourceApps : matchedRule.Pattern)
+                        : matchedRule.Name;
+                    return ruleRes;
                 }
             }
 
-            return _cfg.GlobalMode switch
+            var globalRes = _cfg.GlobalMode switch
             {
                 GlobalMode.NativePassthrough => HandleNativePassthrough(url),
                 GlobalMode.DefaultBrowser => HandleDefaultBrowser(url),
-                GlobalMode.PickerPopup => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url },
+                GlobalMode.PickerPopup => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url, RouteAction = "Global:PickerPopup" },
                 GlobalMode.ClipboardOnly => HandleClipboardOnly(url),
                 GlobalMode.RecentBrowser => HandleRecentBrowser(url),
-                _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
+                _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url, RouteAction = "Global:PickerPopup" }
             };
+            globalRes.SourceApp = sourceApp;
+            return globalRes;
         }
 
         private DispatchResult ExecuteRule(RoutingRule rule, string url)
         {
-            return rule.Action switch
+            var res = rule.Action switch
             {
                 RuleActionKind.OpenTarget => ExecuteBrowserTarget(rule.TargetBrowser, url),
                 RuleActionKind.ClipboardOnly => HandleClipboardOnly(url),
@@ -138,6 +171,11 @@ namespace LinkToBrowser.Core
                 RuleActionKind.NativePassthrough => HandleNativePassthrough(url),
                 _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
             };
+            if (string.IsNullOrWhiteSpace(res.RouteAction))
+            {
+                res.RouteAction = $"Rule:{rule.Action}";
+            }
+            return res;
         }
 
         private DispatchResult HandleRecentBrowser(string url)
@@ -147,6 +185,8 @@ namespace LinkToBrowser.Core
             {
                 return HandleRecentFallback(url);
             }
+
+            var targetLabel = System.IO.Path.GetFileName(target.ExecutablePath);
 
             if (_cfg.EnableCdpForIsolatedBrowsers &&
                 target.HasDevToolsActivePort &&
@@ -161,7 +201,9 @@ namespace LinkToBrowser.Core
                     {
                         Kind = DispatchKind.Done,
                         ExitCode = 0,
-                        Url = url
+                        Url = url,
+                        RouteAction = "RecentBrowser:CDP",
+                        TargetName = targetLabel
                     };
                 }
 
@@ -171,11 +213,13 @@ namespace LinkToBrowser.Core
                     Kind = DispatchKind.ShowClipboard,
                     Url = url,
                     CopyOk = copyOk,
-                    Warning = L.Format("S_WarnCdpFallback", cdpErr)
+                    Warning = L.Format("S_WarnCdpFallback", cdpErr),
+                    RouteAction = "RecentBrowser:CdpFallback",
+                    TargetName = targetLabel
                 };
             }
 
-            var res = LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url);
+            var res = LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url, targetLabel, "RecentBrowser");
             if (res.Kind == DispatchKind.Done && res.ExitCode == 0 && target.HWnd != IntPtr.Zero)
             {
                 try { _activateWindow?.Invoke(target.HWnd); } catch { }
@@ -186,13 +230,15 @@ namespace LinkToBrowser.Core
 
         private DispatchResult HandleRecentFallback(string url)
         {
-            return _cfg.RecentBrowserFallback switch
+            var res = _cfg.RecentBrowserFallback switch
             {
                 RecentFallbackMode.ClipboardOnly => HandleClipboardOnly(url),
                 RecentFallbackMode.DefaultBrowser => HandleDefaultBrowser(url),
                 RecentFallbackMode.NativePassthrough => HandleNativePassthrough(url),
                 _ => new DispatchResult { Kind = DispatchKind.ShowPicker, Url = url }
             };
+            res.RouteAction = $"RecentFallback:{_cfg.RecentBrowserFallback}";
+            return res;
         }
 
         private DispatchResult HandleNativePassthrough(string url)
@@ -205,7 +251,8 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = L.Get("S_WarnNoOriginal")
+                    Warning = L.Get("S_WarnNoOriginal"),
+                    RouteAction = "NativePassthrough:FallbackPicker"
                 };
             }
 
@@ -216,7 +263,9 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = L.Format("S_WarnNoCommand", progId)
+                    Warning = L.Format("S_WarnNoCommand", progId),
+                    RouteAction = "NativePassthrough:FallbackPicker",
+                    TargetName = progId
                 };
             }
 
@@ -227,11 +276,13 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = L.Format("S_WarnInvalidCommand", progId)
+                    Warning = L.Format("S_WarnInvalidCommand", progId),
+                    RouteAction = "NativePassthrough:FallbackPicker",
+                    TargetName = progId
                 };
             }
 
-            return LaunchOrFallbackToClipboard(split.exe, split.args, url);
+            return LaunchOrFallbackToClipboard(split.exe, split.args, url, progId, "NativePassthrough");
         }
 
         private DispatchResult HandleDefaultBrowser(string url)
@@ -247,9 +298,12 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.ShowPicker,
                     Url = url,
-                    Warning = L.Get("S_WarnNoDefaultTarget")
+                    Warning = L.Get("S_WarnNoDefaultTarget"),
+                    RouteAction = "OpenTarget:FallbackPicker"
                 };
             }
+
+            var targetLabel = string.IsNullOrWhiteSpace(target.Name) ? target.ExecutablePath : target.Name;
 
             if (_cfg.EnableCdpForIsolatedBrowsers &&
                 !string.IsNullOrWhiteSpace(target.UserDataDir) &&
@@ -268,7 +322,9 @@ namespace LinkToBrowser.Core
                     {
                         Kind = DispatchKind.Done,
                         ExitCode = 0,
-                        Url = url
+                        Url = url,
+                        RouteAction = "OpenTarget:CDP",
+                        TargetName = targetLabel
                     };
                 }
 
@@ -280,7 +336,9 @@ namespace LinkToBrowser.Core
                         Kind = DispatchKind.ShowClipboard,
                         Url = url,
                         CopyOk = copyOk,
-                        Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, cdpErr)
+                        Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, cdpErr),
+                        RouteAction = "OpenTarget:IsolatedFallback",
+                        TargetName = targetLabel
                     };
                 }
             }
@@ -296,14 +354,16 @@ namespace LinkToBrowser.Core
                     Kind = DispatchKind.ShowClipboard,
                     Url = url,
                     CopyOk = copyOk,
-                    Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, reason)
+                    Warning = L.Format("S_WarnIsolatedNotRunning", target.Name, reason),
+                    RouteAction = "OpenTarget:IsolatedFallback",
+                    TargetName = targetLabel
                 };
             }
 
-            return LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url);
+            return LaunchOrFallbackToClipboard(target.ExecutablePath, target.ArgumentsTemplate, url, targetLabel, "OpenTarget");
         }
 
-        private DispatchResult LaunchOrFallbackToClipboard(string exe, string argsTemplate, string url)
+        private DispatchResult LaunchOrFallbackToClipboard(string exe, string argsTemplate, string url, string targetName = null, string routeAction = "Launch")
         {
             var (ok, err) = _launch(exe, argsTemplate, url);
             if (ok)
@@ -312,7 +372,9 @@ namespace LinkToBrowser.Core
                 {
                     Kind = DispatchKind.Done,
                     ExitCode = 0,
-                    Url = url
+                    Url = url,
+                    RouteAction = routeAction,
+                    TargetName = string.IsNullOrWhiteSpace(targetName) ? exe : targetName
                 };
             }
 
@@ -322,7 +384,9 @@ namespace LinkToBrowser.Core
                 Kind = DispatchKind.ShowClipboard,
                 Url = url,
                 CopyOk = copyOk,
-                Warning = L.Format("S_WarnLaunchFallback", err)
+                Warning = L.Format("S_WarnLaunchFallback", err),
+                RouteAction = $"{routeAction}:LaunchFallback",
+                TargetName = string.IsNullOrWhiteSpace(targetName) ? exe : targetName
             };
         }
 
@@ -336,7 +400,8 @@ namespace LinkToBrowser.Core
                     Kind = DispatchKind.Done,
                     ExitCode = 0,
                     Url = url,
-                    CopyOk = true
+                    CopyOk = true,
+                    RouteAction = "ClipboardOnly"
                 };
             }
 
@@ -345,7 +410,8 @@ namespace LinkToBrowser.Core
                 Kind = DispatchKind.ShowClipboard,
                 Url = url,
                 CopyOk = copyOk,
-                Warning = copyOk ? string.Empty : L.Get("S_WarnClipBusy")
+                Warning = copyOk ? string.Empty : L.Get("S_WarnClipBusy"),
+                RouteAction = "ClipboardOnly"
             };
         }
     }

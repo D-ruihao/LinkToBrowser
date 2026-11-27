@@ -58,7 +58,9 @@ namespace LinkToBrowser.Views
         {
             public RoutingRule Rule { get; set; }
             public bool IsEnabled => Rule.Enabled;
-            public string Name => string.IsNullOrWhiteSpace(Rule.Name) ? Rule.Pattern : Rule.Name;
+            public string Name => !string.IsNullOrWhiteSpace(Rule.Name)
+                ? Rule.Name
+                : (!string.IsNullOrWhiteSpace(Rule.Pattern) ? Rule.Pattern : Rule.SourceApps);
             public string MatchKindLabel => Rule.MatchKind switch
             {
                 RuleMatchKind.UrlPrefix => L.Get("S_RuleMatchPrefix"),
@@ -66,7 +68,17 @@ namespace LinkToBrowser.Views
                 _ => L.Get("S_RuleMatchDomain")
             };
             public string ActionLabel => FormatRuleAction(Rule);
-            public string Subtitle => $"{Rule.Pattern}  →  {ActionLabel}";
+            public string Subtitle
+            {
+                get
+                {
+                    var pat = string.IsNullOrWhiteSpace(Rule.Pattern) ? L.Get("S_RuleAnyUrl") : Rule.Pattern;
+                    var src = string.IsNullOrWhiteSpace(Rule.SourceApps)
+                        ? string.Empty
+                        : $" [{L.Format("S_RuleFromSource", Rule.SourceApps)}]";
+                    return $"{pat}{src}  →  {ActionLabel}";
+                }
+            }
             public ImageSource Icon => Rule.Action == RuleActionKind.OpenTarget && Rule.TargetBrowser != null
                 ? UiHelpers.GetExeIcon(Rule.TargetBrowser.ExecutablePath)
                 : null;
@@ -330,6 +342,8 @@ namespace LinkToBrowser.Views
             ShowClipPopupToggle.IsChecked = _cfg.ShowClipboardPopup;
             ChromiumProfilesToggle.IsChecked = _cfg.ShowChromiumProfiles;
             StripTrackingToggle.IsChecked = _cfg.StripTrackingParams;
+            UnwrapRedirectToggle.IsChecked = _cfg.UnwrapRedirectUrls;
+            CustomTrackingBox.Text = string.Join(", ", _cfg.CustomTrackingParams ?? new List<string>());
             EnableCdpToggle.IsChecked = _cfg.EnableCdpForIsolatedBrowsers;
             EnableRulesToggle.IsChecked = _cfg.EnableRoutingRules;
 
@@ -411,7 +425,18 @@ namespace LinkToBrowser.Views
         private void BindRuleRows()
         {
             var rules = _cfg.Rules ?? new List<RoutingRule>();
-            RulesListControl.ItemsSource = rules.Select(r => new RuleRowVm { Rule = r }).ToList();
+            var q = (RuleSearchBox?.Text ?? string.Empty).Trim();
+            var rows = rules.Select(r => new RuleRowVm { Rule = r });
+            if (q.Length > 0)
+            {
+                rows = rows.Where(vm =>
+                    (vm.Name ?? string.Empty).IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (vm.Rule.Pattern ?? string.Empty).IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (vm.Rule.SourceApps ?? string.Empty).IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (vm.ActionLabel ?? string.Empty).IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            RulesListControl.ItemsSource = rows.ToList();
             UpdateRuleTestPreview();
         }
 
@@ -432,13 +457,16 @@ namespace LinkToBrowser.Views
                 return;
             }
 
-            var effectiveUrl = _cfg.StripTrackingParams ? UrlService.StripTracking(normalized) : normalized;
+            var effectiveUrl = UrlService.Prepare(normalized, _cfg);
+            var sourceApp = ProcessInfoHelper.NormalizeExeFileName(RuleTestSourceBox?.Text);
             if (_cfg.EnableRoutingRules)
             {
-                var hit = RuleMatcher.Match(effectiveUrl, _cfg.Rules);
+                var hit = RuleMatcher.Match(effectiveUrl, _cfg.Rules, sourceApp);
                 if (hit != null)
                 {
-                    var name = string.IsNullOrWhiteSpace(hit.Name) ? hit.Pattern : hit.Name;
+                    var name = !string.IsNullOrWhiteSpace(hit.Name)
+                        ? hit.Name
+                        : (!string.IsNullOrWhiteSpace(hit.Pattern) ? hit.Pattern : hit.SourceApps);
                     RuleTestResultText.Text = L.Format("S_RulesTestHit", name, FormatRuleAction(hit));
                     RuleTestResultText.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "SystemFillColorSuccessBrush");
                     return;
@@ -594,6 +622,22 @@ namespace LinkToBrowser.Views
             if (_isLoadingUi) return;
             _cfg.ShowClipboardPopup = ShowClipPopupToggle.IsChecked == true;
             _cfg.StripTrackingParams = StripTrackingToggle.IsChecked == true;
+            _cfg.UnwrapRedirectUrls = UnwrapRedirectToggle.IsChecked == true;
+            UpdateRuleTestPreview();
+            SaveAndFlash();
+        }
+
+        private void CustomTrackingBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isLoadingUi) return;
+            var raw = CustomTrackingBox.Text ?? string.Empty;
+            _cfg.CustomTrackingParams = raw
+                .Split(new[] { ',', ';', '\r', '\n', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            UpdateRuleTestPreview();
             SaveAndFlash();
         }
 
@@ -842,16 +886,64 @@ namespace LinkToBrowser.Views
         private void DeleteCustom_Click(object sender, RoutedEventArgs e)
         {
             if (((FrameworkElement)sender).Tag is not BrowserRowVm vm) return;
-            _cfg.CustomBrowsers.RemoveAll(c => string.Equals(c.Id, vm.Entry.Id, StringComparison.OrdinalIgnoreCase));
-            _cfg.BrowserOrder.RemoveAll(id => string.Equals(id, vm.Entry.Id, StringComparison.OrdinalIgnoreCase));
-            _cfg.HiddenBrowserIds.RemoveAll(id => string.Equals(id, vm.Entry.Id, StringComparison.OrdinalIgnoreCase));
-            if (_cfg.DefaultBrowser != null &&
-                string.Equals(_cfg.DefaultBrowser.Id, vm.Entry.Id, StringComparison.OrdinalIgnoreCase))
+
+            var affectedRules = (_cfg.Rules ?? new List<RoutingRule>())
+                .Where(r => r?.TargetBrowser != null &&
+                            string.Equals(r.TargetBrowser.Id, vm.Entry.Id, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (affectedRules.Count > 0)
             {
-                _cfg.DefaultBrowser = null;
+                var confirm = MessageBox.Show(
+                    this,
+                    L.Format("S_DeleteCustomRulePrompt", vm.Entry.Name, affectedRules.Count),
+                    L.Get("S_DeleteCustomRuleTitle"),
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    return;
+                }
             }
+
+            RemoveCustomBrowserFromConfig(_cfg, vm.Entry.Id);
             SaveAndFlash();
             RefreshAllState();
+        }
+
+        public static int RemoveCustomBrowserFromConfig(AppConfig cfg, string customBrowserId)
+        {
+            if (cfg == null || string.IsNullOrWhiteSpace(customBrowserId))
+            {
+                return 0;
+            }
+
+            cfg.CustomBrowsers.RemoveAll(c => string.Equals(c.Id, customBrowserId, StringComparison.OrdinalIgnoreCase));
+            cfg.BrowserOrder.RemoveAll(id => string.Equals(id, customBrowserId, StringComparison.OrdinalIgnoreCase));
+            cfg.HiddenBrowserIds.RemoveAll(id => string.Equals(id, customBrowserId, StringComparison.OrdinalIgnoreCase));
+            if (cfg.DefaultBrowser != null &&
+                string.Equals(cfg.DefaultBrowser.Id, customBrowserId, StringComparison.OrdinalIgnoreCase))
+            {
+                cfg.DefaultBrowser = null;
+            }
+
+            var clearedRules = 0;
+            if (cfg.Rules != null)
+            {
+                foreach (var rule in cfg.Rules)
+                {
+                    if (rule?.TargetBrowser != null &&
+                        string.Equals(rule.TargetBrowser.Id, customBrowserId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        rule.TargetBrowser = null;
+                        rule.Enabled = false;
+                        clearedRules++;
+                    }
+                }
+            }
+
+            return clearedRules;
         }
 
         private void OpenConfig_Click(object sender, RoutedEventArgs e)
@@ -918,6 +1010,48 @@ namespace LinkToBrowser.Views
         }
 
         private void RuleTestBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateRuleTestPreview();
+
+        private void ClearRuleTest_Click(object sender, RoutedEventArgs e)
+        {
+            RuleTestBox.Text = string.Empty;
+            RuleTestSourceBox.Text = string.Empty;
+            UpdateRuleTestPreview();
+        }
+
+        private void RuleSearchBox_TextChanged(object sender, TextChangedEventArgs e) => BindRuleRows();
+
+        private void DuplicateRule_Click(object sender, RoutedEventArgs e)
+        {
+            if (((FrameworkElement)sender).Tag is not RuleRowVm vm || _cfg.Rules == null) return;
+            var idx = _cfg.Rules.FindIndex(r => string.Equals(r.Id, vm.Rule.Id, StringComparison.OrdinalIgnoreCase));
+            if (idx < 0) return;
+
+            var src = vm.Rule;
+            var copy = new RoutingRule
+            {
+                Id = $"rule:{Guid.NewGuid():N}",
+                Enabled = src.Enabled,
+                Name = (string.IsNullOrWhiteSpace(src.Name) ? src.Pattern : src.Name) + L.Get("S_RuleCopySuffix"),
+                MatchKind = src.MatchKind,
+                Pattern = src.Pattern,
+                SourceApps = src.SourceApps,
+                Action = src.Action,
+                TargetBrowser = src.TargetBrowser == null ? null : new BrowserEntry
+                {
+                    Id = src.TargetBrowser.Id,
+                    Name = src.TargetBrowser.Name,
+                    ExecutablePath = src.TargetBrowser.ExecutablePath,
+                    ArgumentsTemplate = src.TargetBrowser.ArgumentsTemplate,
+                    ProgId = src.TargetBrowser.ProgId,
+                    UserDataDir = src.TargetBrowser.UserDataDir,
+                    Kind = src.TargetBrowser.Kind
+                }
+            };
+
+            _cfg.Rules.Insert(idx + 1, copy);
+            SaveAndFlash();
+            BindRuleRows();
+        }
 
         private void AddRule_Click(object sender, RoutedEventArgs e)
         {

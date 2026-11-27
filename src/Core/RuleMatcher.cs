@@ -28,7 +28,7 @@ namespace LinkToBrowser.Core
             return false;
         }
 
-        public static RoutingRule Match(string url, IReadOnlyList<RoutingRule> rules)
+        public static RoutingRule Match(string url, IReadOnlyList<RoutingRule> rules, string sourceApp = null)
         {
             if (string.IsNullOrWhiteSpace(url) || rules == null || rules.Count == 0)
             {
@@ -44,12 +44,17 @@ namespace LinkToBrowser.Core
 
             foreach (var rule in rules)
             {
-                if (rule == null || !rule.Enabled || string.IsNullOrWhiteSpace(rule.Pattern))
+                if (rule == null || !rule.Enabled)
                 {
                     continue;
                 }
 
-                if (IsRuleMatch(url, host, authority, rule, port))
+                if (!HasValidTokens(rule.Pattern) && !HasValidTokens(rule.SourceApps))
+                {
+                    continue;
+                }
+
+                if (IsRuleMatch(url, host, authority, rule, port, sourceApp))
                 {
                     return rule;
                 }
@@ -58,8 +63,20 @@ namespace LinkToBrowser.Core
             return null;
         }
 
-        public static bool IsRuleMatch(string url, string host, string authority, RoutingRule rule, int port = -1)
+        public static bool IsRuleMatch(string url, string host, string authority, RoutingRule rule, int port = -1, string sourceApp = null)
         {
+            var hasSourceFilter = HasValidTokens(rule.SourceApps);
+            if (hasSourceFilter && !MatchSourceApp(sourceApp, rule.SourceApps))
+            {
+                return false;
+            }
+
+            var hasUrlPattern = HasValidTokens(rule.Pattern);
+            if (!hasUrlPattern)
+            {
+                return hasSourceFilter;
+            }
+
             if (port < 0 && !string.IsNullOrEmpty(authority))
             {
                 TrySplitHostAndPort(authority, out _, out port);
@@ -96,6 +113,37 @@ namespace LinkToBrowser.Core
                             return true;
                         }
                         break;
+                }
+            }
+
+            return false;
+        }
+
+        public static bool MatchSourceApp(string actualSourceApp, string configuredSourceApps)
+        {
+            var actualFile = ProcessInfoHelper.NormalizeExeFileName(actualSourceApp);
+            if (string.IsNullOrWhiteSpace(actualFile) || string.IsNullOrWhiteSpace(configuredSourceApps))
+            {
+                return false;
+            }
+
+            var actualBase = actualFile.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? actualFile.Substring(0, actualFile.Length - 4)
+                : actualFile;
+
+            foreach (var raw in configuredSourceApps.Split(PatternSeparators, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var token = ProcessInfoHelper.NormalizeExeFileName(raw);
+                if (token.Length == 0) continue;
+
+                var tokenBase = token.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                    ? token.Substring(0, token.Length - 4)
+                    : token;
+
+                if (string.Equals(actualFile, token, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(actualBase, tokenBase, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
                 }
             }
 

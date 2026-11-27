@@ -37,6 +37,7 @@ namespace LinkToBrowser.Core
         public string FileArg { get; set; } = string.Empty;
         public string IdArg { get; set; } = string.Empty;
         public string BrowserArg { get; set; } = string.Empty;
+        public string SourceAppArg { get; set; } = string.Empty;
     }
 
     public static class CliParser
@@ -183,6 +184,11 @@ namespace LinkToBrowser.Core
                 else if (TryTakeFlagValue(args, ref i, trimmed, "--id", out var idVal))
                 {
                     inv.IdArg = idVal;
+                }
+                else if (TryTakeFlagValue(args, ref i, trimmed, "--source-app", out var srcVal) ||
+                         TryTakeFlagValue(args, ref i, trimmed, "--source-apps", out srcVal))
+                {
+                    inv.SourceAppArg = srcVal;
                 }
                 else if (EqualsIgnoreCase(trimmed, "--settings"))
                 {

@@ -258,10 +258,13 @@ namespace LinkToBrowser.Tools.ScreenshotGen
 
         private static void CapturePicker(Options opts, AppConfig baseCfg, ConfigService cfgSvc, LogService logSvc)
         {
+            ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
+            PumpUi(150);
+
             var pickerCfg = new AppConfig
             {
                 Language = opts.Language,
-                Theme = ThemeMode.Light,
+                Theme = ThemeMode.Dark,
                 ShowChromiumProfiles = false,
                 EnableCdpForIsolatedBrowsers = false,
                 CustomBrowsers = new List<BrowserEntry>
@@ -290,13 +293,12 @@ namespace LinkToBrowser.Tools.ScreenshotGen
 
             PrepareOffscreen(win, width: win.Width, height: double.NaN);
             win.Show();
-            // Override Loaded repositioning so it stays cleanly offscreen
             PumpUi(350);
             win.Left = -32000;
             win.Top = -32000;
 
             var path = BuildOutputPath(opts, "picker");
-            RenderWindowToPng(win, path, opts.Dpi, isDark: false);
+            RenderWindowToPng(win, path, opts.Dpi, isDark: true);
             SafeClose(win);
         }
 

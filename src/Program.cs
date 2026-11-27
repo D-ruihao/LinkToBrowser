@@ -125,19 +125,20 @@ namespace LinkToBrowser
                             return (ok, err);
                         },
                         RecentBrowserService.ActivateWindow,
-                        userDataDir => RecentBrowserService.FindWindowByUserDataDir(userDataDir, selfExe));
+                        userDataDir => RecentBrowserService.FindWindowByUserDataDir(userDataDir, selfExe),
+                        () => ProcessInfoHelper.DetectSourceApp(selfExe));
 
                     var result = dispatcher.Dispatch(inv);
                     if (result.Kind == DispatchKind.Done)
                     {
                         var ok = result.ExitCode == 0;
-                        logService.LogLink(result.Url, ok, ok ? null : result.Warning);
+                        logService.LogLink(result.Url, ok, result.FormatRouteDetail());
                         return result.ExitCode;
                     }
 
                     if (result.Kind == DispatchKind.ShowClipboard)
                     {
-                        logService.LogLink(result.Url, result.CopyOk, result.Warning);
+                        logService.LogLink(result.Url, result.CopyOk, result.FormatRouteDetail());
                     }
 
                     return RunUi(result, configService, logService, registration, selfExe);

@@ -18,15 +18,15 @@
 
 Windows 11 系统默认应用只能固定绑定单个浏览器，且无法将外部软件点击的链接直接打开到运行中的独立 / 指纹浏览器窗口。将 `LinkToBrowser` 设为 `HTTP` / `HTTPS` 默认应用后，可按以下方式自动路由每个链接：
 
-- **按链接分流规则**：支持 **域名**（含子域名通配与端口）、**URL 前缀**、**通配符**（`*` / `?`），按自上而下优先级匹配；命中后可转交指定浏览器、Chromium 多账号 Profile、自定义 `.exe`、运行中的独立窗口，或执行剪贴板 / 弹窗 / 最近聚焦 / 原生默认。内置默认停用的示例模板与实时 URL 测试框，按住 `Alt` / `Shift` 修饰键可临时改弹选择窗。
+- **按链接与来源应用分流规则**：支持 **域名**（含子域名通配及端口/IPv6）、**URL 前缀**、**通配符**（`*` / `?`）以及 **来源应用进程**（如 `WeChat.exe`、`QQ.exe`、`Code.exe`）联合或单独匹配；支持规则搜索、复制、实时测试预览（含模拟来源应用）与修饰键（`Alt` / `Shift`）临时弹窗覆盖，并可在选择弹窗中勾选「记住此域名」一键生成置顶规则。
 - **五种全局模式**（未命中规则时生效）：
   1. **最近聚焦的浏览器**：按窗口活跃顺序自动打开到最近使用或点击聚焦的浏览器（含已最小化窗口），支持无可用窗口时的回退策略。
-  2. **弹出浏览器选择界面**：在光标附近弹出选择窗，支持 `1–9` 快选、搜索过滤、`↑/↓` + `Enter` 打开与 `Ctrl+C` 复制。
+  2. **弹出浏览器选择界面**：在光标附近弹出选择窗（支持混合 DPI 多显示器精确防偏移），支持 `1–9` 快选、搜索过滤、`↑/↓` + `Enter` 打开、`Ctrl+C` 复制与一键记住域名。
   3. **默认指定浏览器**：静默使用选定的浏览器、多账号 Profile、活跃独立窗口或自定义 `.exe` 打开。
   4. **复制到剪贴板**：拦截链接并复制，支持可选确认浮窗与自动关闭倒计时。
   5. **Windows 原生**：静默转发给接管前记录的系统原默认浏览器。
-- **独立 / 指纹浏览器直跳（`DevToolsActivePort` / CDP）**：开启后可发现暴露本地 `DevToolsActivePort` 的隔离 Chromium 窗口，在规则、最近聚焦、选择弹窗及默认指定模式下直接向目标窗口新建标签页。*兼容性说明：目前仅在比特浏览器（BitBrowser）完成实机验证，其它开放标准 `DevToolsActivePort` 的隔离浏览器视自身配置兼容；不可用时自动安全回退并复制到剪贴板。*
-- **配置备份与 CLI 接口**：支持完整配置或仅规则的 JSON 导入 / 导出（导入前自动备份为 `config.bak.json`，支持合并或覆盖）；提供无窗口命令行与 UTF-8 `--json` 输出，便于脚本与自动化调用。
+- **链接预处理与独立 / 指纹浏览器直跳（CDP）**：可选自动解包常见外链中转链接（知乎、掘金、QQ、Outlook 等，默认关闭且自动避开 OAuth 登录链接）及自定义清理追踪参数；开启 CDP 后可直接向暴露本地 `DevToolsActivePort` 的隔离 Chromium 窗口新建标签页。*兼容性说明：目前仅在比特浏览器（BitBrowser）完成实机验证，其它开放标准 `DevToolsActivePort` 的隔离浏览器视自身配置兼容；不可用时自动安全回退并复制到剪贴板。*
+- **配置备份、结构化日志与 CLI 接口**：支持完整配置或仅规则的 JSON 导入 / 导出（导入前自动备份为 `config.bak.json`，支持合并或覆盖）；`links.log` 记录来源应用、命中规则与目标浏览器；提供无窗口命令行与 UTF-8 `--json` 输出，便于脚本与自动化调用。
 - **绿色便携与用户级注册**：基于 Windows 11 自带 `.NET Framework 4.8`，无需管理员权限即可完成 `HKCU` 注册与清理；配置 `config.json` 与日志 `logs\` 默认存放在程序同级目录，支持中英双语实时切换与深浅色 Mica 主题自适应。
 
 ---
@@ -39,7 +39,7 @@ Windows 11 系统默认应用只能固定绑定单个浏览器，且无法将外
 
 | 浏览器选择弹窗 | 剪贴板确认浮窗 |
 | :---: | :---: |
-| ![Picker Window](docs/screenshots/picker-v21.png) | ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
+| ![Picker Window](docs/screenshots/picker-v211.png) | ![Clipboard Popup](docs/screenshots/clipboard-v21.png) |
 
 ---
 
@@ -63,8 +63,8 @@ LinkToBrowser.exe --list-browsers --include-running --json
 
 # 切换模式 / 管理规则 / 模拟路由测试
 LinkToBrowser.exe --set-mode recent --fallback clipboard --json
-LinkToBrowser.exe --rules add --name "GitHub" --kind domain --pattern "github.com, *.github.com" --action open --target "Edge" --json
-LinkToBrowser.exe --test-url "https://gist.github.com/D-ruihao" --json
+LinkToBrowser.exe --rules add --name "GitHub" --kind domain --pattern "github.com, *.github.com" --source-app "Code.exe" --action open --target "Edge" --json
+LinkToBrowser.exe --test-url "https://gist.github.com/D-ruihao" --source-app "Code.exe" --json
 
 # 定向打开链接 / 备份与恢复（支持 --config-dir 指定隔离目录）
 LinkToBrowser.exe --browser "Edge" "https://example.com" --json

@@ -126,6 +126,11 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
+            <CheckBox x:Name="RememberDomainCheck"
+                      Margin="2,8,0,0"
+                      FontSize="12"
+                      Visibility="Collapsed" />
+
             <StackPanel x:Name="EmptyStatePanel" Visibility="Collapsed" Margin="0,16,0,8" HorizontalAlignment="Center">
                 <TextBlock Text="{DynamicResource S_PickerEmpty}"
                            HorizontalAlignment="Center"

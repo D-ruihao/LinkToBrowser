@@ -9,3 +9,4 @@ dist/
 config.json
 config.json.tmp
 *.log
+docs/TODO.md

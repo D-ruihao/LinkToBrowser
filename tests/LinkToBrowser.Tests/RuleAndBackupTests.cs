@@ -459,5 +459,154 @@ namespace LinkToBrowser.Tests
                 cfgSvc, logSvc, reg, @"D:\Tools\LinkToBrowser.exe", swSepOnly));
             Assert.Contains("\"ok\":false", swSepOnly.ToString());
         }
+
+        [Fact]
+        public void ProcessInfoHelper_ReadsCurrentProcessCommandLineFast_AndSelectsSourceApp()
+        {
+            var pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+            Assert.True(ProcessInfoHelper.TryReadCommandLineFast(pid, out var cmdLine));
+            Assert.False(string.IsNullOrWhiteSpace(cmdLine));
+
+            // Skips self and shell wrappers, picks first meaningful parent
+            Assert.Equal(
+                "WeChat.exe",
+                ProcessInfoHelper.SelectSourceApp(
+                    new[] { @"C:\Windows\explorer.exe", @"D:\Apps\WeChat\WeChat.exe" },
+                    @"C:\Program Files\Code\Code.exe",
+                    @"D:\Tools\LinkToBrowser.exe"));
+
+            // Falls back to foreground window when parent chain only has shell wrappers
+            Assert.Equal(
+                "Code.exe",
+                ProcessInfoHelper.SelectSourceApp(
+                    new[] { @"C:\Windows\explorer.exe", @"C:\Windows\System32\svchost.exe" },
+                    @"C:\Program Files\Microsoft VS Code\Code.exe",
+                    @"D:\Tools\LinkToBrowser.exe"));
+        }
+
+        [Fact]
+        public void UrlService_UnwrapRedirectUrls_AndCustomTrackingParams()
+        {
+            // Known Chinese & international redirect wrappers
+            Assert.Equal(
+                "https://github.com/D-ruihao/LinkToBrowser",
+                UrlService.UnwrapRedirectUrl("https://link.zhihu.com/?target=https%3A%2F%2Fgithub.com%2FD-ruihao%2FLinkToBrowser"));
+
+            Assert.Equal(
+                "https://example.com/article?id=42",
+                UrlService.UnwrapRedirectUrl("https://c.pc.qq.com/middlem.html?pfurl=https%3A%2F%2Fexample.com%2Farticle%3Fid%3D42"));
+
+            Assert.Equal(
+                "https://docs.microsoft.com/en-us/",
+                UrlService.UnwrapRedirectUrl("https://nam01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdocs.microsoft.com%2Fen-us%2F&data=abc"));
+
+            // Nested redirect unwraps cleanly
+            var nested = "https://link.juejin.cn/?target=" + Uri.EscapeDataString("https://link.zhihu.com/?target=https%3A%2F%2Fgithub.com%2FD-ruihao");
+            Assert.Equal("https://github.com/D-ruihao", UrlService.UnwrapRedirectUrl(nested));
+
+            // OAuth login URLs must NOT be unwrapped
+            var oauth = "https://accounts.example.com/oauth2/authorize?client_id=abc&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcb";
+            Assert.Equal(oauth, UrlService.UnwrapRedirectUrl(oauth));
+
+            // Custom tracking params support exact keys and trailing * prefixes
+            var stripped = UrlService.StripTracking(
+                "https://b.example/video?id=1&utm_source=x&si=99&vd_source=abc&ref_code=123#t=10",
+                new[] { "si", "vd_source", "ref_*" });
+            Assert.Equal("https://b.example/video?id=1#t=10", stripped);
+
+            // Default AppConfig has UnwrapRedirectUrls = false
+            var defaultCfg = new AppConfig();
+            Assert.False(defaultCfg.UnwrapRedirectUrls);
+            Assert.Equal(
+                "https://link.zhihu.com/?target=https%3A%2F%2Fgithub.com%2FD-ruihao",
+                UrlService.Prepare("https://link.zhihu.com/?target=https%3A%2F%2Fgithub.com%2FD-ruihao", defaultCfg));
+        }
+
+        [Fact]
+        public void Dispatcher_AndCli_SupportSourceAppRules_Unwrap_AndStructuredRouteDetail()
+        {
+            var cfg = new AppConfig
+            {
+                GlobalMode = GlobalMode.PickerPopup,
+                UnwrapRedirectUrls = true,
+                StripTrackingParams = true,
+                CustomTrackingParams = { "si", "vd_*" },
+                EnableRoutingRules = true,
+                Rules =
+                {
+                    new RoutingRule
+                    {
+                        Id = "r-wechat-gh",
+                        Enabled = true,
+                        Name = "WeChat GitHub",
+                        MatchKind = RuleMatchKind.DomainSuffix,
+                        Pattern = "github.com",
+                        SourceApps = "WeChat.exe, QQ.exe",
+                        Action = RuleActionKind.ClipboardOnly
+                    },
+                    new RoutingRule
+                    {
+                        Id = "r-code-any",
+                        Enabled = true,
+                        Name = "IDE Any",
+                        MatchKind = RuleMatchKind.DomainSuffix,
+                        Pattern = string.Empty,
+                        SourceApps = "Code",
+                        Action = RuleActionKind.OpenTarget,
+                        TargetBrowser = new BrowserEntry { Id = "edge", Name = "Microsoft Edge", ExecutablePath = @"C:\msedge.exe" }
+                    }
+                }
+            };
+
+            string currentSource = "WeChat.exe";
+            string launchedUrl = null;
+            var dispatcher = new LinkDispatcher(
+                cfg,
+                (_, _, url) => { launchedUrl = url; return (true, null); },
+                _ => true,
+                _ => string.Empty,
+                _ => false,
+                _ => (false, string.Empty, string.Empty),
+                null,
+                null,
+                null,
+                null,
+                () => currentSource);
+
+            // Wrapped URL from WeChat unwraps, strips custom tracking, matches WeChat GitHub rule
+            var wrapped = "https://link.zhihu.com/?target=" + Uri.EscapeDataString("https://github.com/D-ruihao/LinkToBrowser?si=123&vd_source=wx");
+            var resWeChat = dispatcher.Dispatch(CliParser.Parse(new[] { wrapped }));
+            Assert.Equal(DispatchKind.ShowClipboard, resWeChat.Kind);
+            Assert.Equal("https://github.com/D-ruihao/LinkToBrowser", resWeChat.Url);
+            Assert.Equal("WeChat.exe", resWeChat.SourceApp);
+            Assert.Equal("WeChat GitHub", resWeChat.MatchedRuleName);
+            var detail = resWeChat.FormatRouteDetail();
+            Assert.Contains("src=WeChat.exe", detail);
+            Assert.Contains("rule=WeChat GitHub", detail);
+
+            // Same URL from Code.exe skips WeChat rule and hits source-only IDE rule
+            currentSource = "Code.exe";
+            var resCode = dispatcher.Dispatch(CliParser.Parse(new[] { wrapped }));
+            Assert.Equal(DispatchKind.Done, resCode.Kind);
+            Assert.Equal("https://github.com/D-ruihao/LinkToBrowser", launchedUrl);
+            Assert.Contains("target=Microsoft Edge", resCode.FormatRouteDetail());
+
+            // CLI --rules add --source-app and --test-url --source-app
+            var cfgDir = Path.Combine(_tempDir, "cli-src");
+            Directory.CreateDirectory(cfgDir);
+            var cfgSvc = new ConfigService(cfgDir, cfgDir);
+            cfgSvc.Save(cfg);
+            var logSvc = new LogService(Path.Combine(cfgDir, "logs"));
+            var reg = new SystemRegistration(@"D:\Tools\LinkToBrowser.exe");
+
+            var swTest = new StringWriter();
+            Assert.Equal(0, CliCommandHandler.Execute(
+                CliParser.Parse(new[] { "--test-url", wrapped, "--source-app", "WeChat.exe", "--json" }),
+                cfgSvc, logSvc, reg, @"D:\Tools\LinkToBrowser.exe", swTest));
+            var testOut = swTest.ToString();
+            Assert.Contains("\"unwrappedUrl\":\"https://github.com/D-ruihao/LinkToBrowser?si=123\\u0026vd_source=wx\"", testOut);
+            Assert.Contains("\"effectiveUrl\":\"https://github.com/D-ruihao/LinkToBrowser\"", testOut);
+            Assert.Contains("\"plannedAction\":\"Rule:ClipboardOnly\"", testOut);
+        }
     }
 }
